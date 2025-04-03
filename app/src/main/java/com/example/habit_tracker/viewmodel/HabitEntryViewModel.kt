@@ -11,6 +11,8 @@ import com.example.habit_tracker.model.HabitProgress
 import com.example.habit_tracker.model.Mood
 import com.example.habit_tracker.model.toUiModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -36,6 +38,12 @@ class HabitEntryViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             dao.deleteByDate(date.toString())
         }
+    }
+
+    suspend fun getEntryByDate(date: LocalDate): HabitEntry? {
+        return getEntriesWithHabits(
+            AppDatabase.getDatabase(getApplication()).habitDao().getAllHabits().first()
+        ).firstOrNull()?.find { it.date == date }
     }
 }
 

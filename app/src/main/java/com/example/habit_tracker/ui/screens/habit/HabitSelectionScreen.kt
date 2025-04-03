@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -52,6 +53,7 @@ import com.example.habit_tracker.model.Mood
 import com.example.habit_tracker.model.toEntity
 import com.example.habit_tracker.viewmodel.HabitEntryViewModel
 import com.example.habit_tracker.viewmodel.HabitViewModel
+import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 
 
@@ -67,6 +69,20 @@ fun HabitSelectionScreen(
     val selectedHabits = remember { mutableStateMapOf<Int, Boolean>() }
     val habits = habitViewModel.habits.collectAsState().value
 
+    LaunchedEffect(habits) {
+        if (habits.isNotEmpty()) {
+            val allHabitEntities = habits.map { it.toEntity() }
+            val matchingEntry = entryViewModel
+                .getEntriesWithHabits(allHabitEntities)
+                .firstOrNull()
+                ?.find { it.date == date }
+
+            matchingEntry?.habits?.forEach { habitProgress ->
+                selectedHabits[habitProgress.habit.id] = true
+            }
+        }
+    }
+    
     fun save() {
         val selected = habits.filter { selectedHabits[it.id] == true }
 

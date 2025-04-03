@@ -36,7 +36,7 @@ fun EntryList(
     fun onEdit(entry: HabitEntry) {
         val moodString = entry.mood.name
         val dateString = entry.date.toString()
-        navController.navigate("addEntry/$moodString/$dateString")
+        navController.navigate("habitSelection/$moodString/$dateString")
     }
 
     LazyColumn(
