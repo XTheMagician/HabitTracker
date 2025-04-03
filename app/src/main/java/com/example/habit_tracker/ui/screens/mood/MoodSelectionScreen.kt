@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,13 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.habit_tracker.model.Mood
-import com.example.habit_tracker.model.getEmojiForMood
+import com.example.habit_tracker.model.getIconForMood
 import com.example.habit_tracker.model.getLabelForMood
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -73,7 +74,7 @@ fun AddEntryScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {
             Text(
-                text = "Wie geht's dir?",
+                text = "How are you?",
                 style = MaterialTheme.typography.headlineMedium
             )
             Row(
@@ -88,7 +89,9 @@ fun AddEntryScreen(navController: NavController) {
                             selectedDate.year,
                             selectedDate.monthValue - 1,
                             selectedDate.dayOfMonth
-                        ).show()
+                        ).apply {
+                            datePicker.maxDate = System.currentTimeMillis()
+                        }.show()
                     }
             ) {
                 Icon(Icons.Filled.CalendarToday, contentDescription = "Datum wählen")
@@ -101,7 +104,7 @@ fun AddEntryScreen(navController: NavController) {
             ) {
                 Mood.values().reversed().forEach { mood ->
                     MoodOption(
-                        emoji = getEmojiForMood(mood),
+                        icon = getIconForMood(mood),
                         label = getLabelForMood(mood),
                         mood = mood,
                         selectedMood = selectedMood
@@ -117,14 +120,15 @@ fun AddEntryScreen(navController: NavController) {
 
 @Composable
 fun MoodOption(
-    emoji: String,
+    icon: ImageVector,
     label: String,
     mood: Mood,
     selectedMood: Mood?,
     onClick: (Mood) -> Unit
 ) {
     val isSelected = mood == selectedMood
-    val highlightColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Unspecified
+    val highlightColor =
+        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -132,13 +136,15 @@ fun MoodOption(
             .clickable { onClick(mood) }
             .padding(4.dp)
     ) {
-        Text(
-            text = emoji,
-            fontSize = if (isSelected) 32.sp else 28.sp
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = highlightColor,
+            modifier = Modifier.size(40.dp)
         )
         Text(
             text = label,
-            fontSize = 12.sp,
+            fontSize = 13.sp,
             color = highlightColor
         )
     }

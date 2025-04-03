@@ -37,8 +37,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,12 +53,14 @@ import com.example.habit_tracker.model.Habit
 import com.example.habit_tracker.model.HabitEntry
 import com.example.habit_tracker.model.HabitProgress
 import com.example.habit_tracker.model.Mood
+import com.example.habit_tracker.model.getIconForMood
+import com.example.habit_tracker.model.getLabelForMood
 import com.example.habit_tracker.model.toEntity
+import com.example.habit_tracker.ui.screens.mood.MoodOption
 import com.example.habit_tracker.viewmodel.HabitEntryViewModel
 import com.example.habit_tracker.viewmodel.HabitViewModel
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
-
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +73,8 @@ fun HabitSelectionScreen(
 ) {
     val selectedHabits = remember { mutableStateMapOf<Int, Boolean>() }
     val habits = habitViewModel.habits.collectAsState().value
+    var selectedMood by remember { mutableStateOf(mood) }
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(habits) {
         if (habits.isNotEmpty()) {
@@ -82,13 +89,13 @@ fun HabitSelectionScreen(
             }
         }
     }
-    
+
     fun save() {
         val selected = habits.filter { selectedHabits[it.id] == true }
 
         val entry = HabitEntry(
             date = date,
-            mood = mood,
+            mood = selectedMood,
             habits = selected.map { habit -> HabitProgress(habit) }
         )
 
@@ -99,9 +106,6 @@ fun HabitSelectionScreen(
             launchSingleTop = true
         }
     }
-
-
-    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -132,13 +136,29 @@ fun HabitSelectionScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 72.dp), // Leave space for FAB
+                    .padding(bottom = 72.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Text(
-                    text = "Was war heute los?",
+                    text = "How was your day?",
                     style = MaterialTheme.typography.headlineSmall
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Mood.values().reversed().forEach { moodItem ->
+                        MoodOption(
+                            icon = getIconForMood(moodItem),
+                            label = getLabelForMood(moodItem),
+                            mood = moodItem,
+                            selectedMood = selectedMood
+                        ) {
+                            selectedMood = it
+                        }
+                    }
+                }
 
                 habits.groupBy { it.category }.forEach { (category, habitGroup) ->
                     HabitGroupCard(
@@ -164,7 +184,6 @@ fun HabitSelectionScreen(
                     }
                 }
             }
-
 
             Box(
                 modifier = Modifier
@@ -217,9 +236,8 @@ fun HabitButton(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val bgColor = if (selected) MaterialTheme.colorScheme.primary
-    else Color.LightGray.copy(alpha = 0.3f)
-
+    val bgColor =
+        if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)
     val contentColor = if (selected) Color.White else Color.Black
 
     Column(

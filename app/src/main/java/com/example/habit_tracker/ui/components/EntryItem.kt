@@ -31,7 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.habit_tracker.model.HabitEntry
-import com.example.habit_tracker.model.getEmojiForMood
+import com.example.habit_tracker.model.getIconForMood
 import com.example.habit_tracker.model.getLabelForMood
 import java.time.format.DateTimeFormatter
 
@@ -61,10 +61,17 @@ fun EntryItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(text = dateText, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        text = getEmojiForMood(entry.mood) + " " + getLabelForMood(entry.mood),
-                        fontSize = 16.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = getIconForMood(entry.mood),
+                            contentDescription = "Mood Icon"
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = getLabelForMood(entry.mood),
+                            fontSize = 16.sp
+                        )
+                    }
                 }
 
                 Box {
