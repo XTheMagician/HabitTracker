@@ -35,6 +35,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +61,7 @@ import androidx.navigation.NavController
 import com.example.habit_tracker.model.Habit
 import com.example.habit_tracker.model.HabitEntry
 import com.example.habit_tracker.model.HabitProgress
+import com.example.habit_tracker.model.HabitType
 import com.example.habit_tracker.model.Mood
 import com.example.habit_tracker.model.getIconForMood
 import com.example.habit_tracker.model.getLabelForMood
@@ -68,7 +72,6 @@ import com.example.habit_tracker.ui.theme.MaterialSymbols
 import com.example.habit_tracker.utils.MaterialSymbolsRepository
 import com.example.habit_tracker.viewmodel.HabitEntryViewModel
 import com.example.habit_tracker.viewmodel.HabitViewModel
-import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -80,7 +83,7 @@ fun HabitSelectionScreen(
     entryViewModel: HabitEntryViewModel = viewModel(),
     habitViewModel: HabitViewModel = viewModel()
 ) {
-    val selectedHabits = remember { mutableStateMapOf<Int, Boolean>() }
+    val habitProgressMap = remember { mutableStateMapOf<Int, Int?>() }
     val habits = habitViewModel.habits.collectAsState().value
     var selectedMood by remember { mutableStateOf(mood) }
     val scrollState = rememberScrollState()
@@ -88,35 +91,38 @@ fun HabitSelectionScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var habitToDelete by remember { mutableStateOf<Habit?>(null) }
 
-    // --- NEW: State for New Category Dialog ---
     var showNewCategoryDialog by remember { mutableStateOf(false) }
     var newCategoryNameInput by remember { mutableStateOf("") }
-    // --- END NEW STATE ---
 
-    LaunchedEffect(habits) {
-        if (habits.isNotEmpty()) {
-            val allHabitEntities = habits.mapNotNull { it?.toEntity() }
-            if (allHabitEntities.isNotEmpty()) {
-                val matchingEntry = entryViewModel
-                    .getEntriesWithHabits(allHabitEntities)
-                    .firstOrNull()
-                    ?.find { it.date == date }
+    var showScalableInputDialog by remember { mutableStateOf(false) }
+    var scalableHabitToEdit by remember { mutableStateOf<Habit?>(null) }
 
-                matchingEntry?.habits?.forEach { habitProgress ->
-                    selectedHabits[habitProgress.habit.id] = true
-                }
+    LaunchedEffect(date) {
+        habitProgressMap.clear()
+        val existingEntry: HabitEntry? = entryViewModel.getEntryByDate(date)
+        if (existingEntry != null) {
+            existingEntry.habits.forEach { habitProgress ->
+                habitProgressMap[habitProgress.habit.id] = habitProgress.value
             }
         }
     }
 
     fun save() {
-        val selected = habits.filter { selectedHabits[it.id] == true }
+        val progressList = mutableListOf<HabitProgress>()
+        habitProgressMap.forEach { (habitId, value) ->
+            val habit = habits.find { it.id == habitId }
+            if (habit != null && value != null) {
+                progressList.add(HabitProgress(habit = habit, value = value))
+            }
+        }
+
         val entry = HabitEntry(
             date = date,
             mood = selectedMood,
-            habits = selected.map { habit -> HabitProgress(habit) }
+            habits = progressList
         )
-        entryViewModel.saveEntry(entry.toEntity())
+        entryViewModel.saveEntry(entry)
+
         navController.navigate(AppDestinations.HOME) {
             popUpTo(AppDestinations.HOME) { inclusive = true }
             launchSingleTop = true
@@ -152,7 +158,7 @@ fun HabitSelectionScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 120.dp), // Ensure padding for FAB + new button
+                    .padding(bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Text(
@@ -195,10 +201,15 @@ fun HabitSelectionScreen(
                             habitGroup.forEach { habit ->
                                 HabitButton(
                                     habit = habit,
-                                    selected = selectedHabits[habit.id] == true,
+                                    selected = habitProgressMap[habit.id] != null,
                                     onClick = {
-                                        selectedHabits[habit.id] =
-                                            !(selectedHabits[habit.id] ?: false)
+                                        if (habit.type == HabitType.BINARY) {
+                                            habitProgressMap[habit.id] =
+                                                if (habitProgressMap[habit.id] == null) 1 else null
+                                        } else {
+                                            scalableHabitToEdit = habit
+                                            showScalableInputDialog = true
+                                        }
                                     },
                                     onLongClick = {
                                         habitToDelete = habit
@@ -208,15 +219,15 @@ fun HabitSelectionScreen(
                             }
                         }
                     }
-                } // End groupBy
+                }
 
-                // --- NEW: Button to Add New Category ---
-                Button( // Or TextButton for less emphasis
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
                     onClick = {
-                        newCategoryNameInput = "" // Clear previous input
-                        showNewCategoryDialog = true // Show the dialog
+                        newCategoryNameInput = ""
+                        showNewCategoryDialog = true
                     },
-                    modifier = Modifier.align(Alignment.CenterHorizontally) // Center the button
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Icon(
                         Icons.Default.Add,
@@ -226,15 +237,13 @@ fun HabitSelectionScreen(
                     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                     Text("Add New Category")
                 }
-                // --- END NEW BUTTON ---
 
-            } // End Main Column
+            }
 
-            Box( // FAB Box
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 24.dp),
-
                 contentAlignment = Alignment.BottomCenter
             ) {
                 FloatingActionButton(onClick = { save() }) {
@@ -242,7 +251,7 @@ fun HabitSelectionScreen(
                 }
             }
 
-            // --- Delete Dialog --- (Keep existing dialog logic)
+
             if (showDeleteDialog && habitToDelete != null) {
                 AlertDialog(
                     onDismissRequest = {
@@ -255,6 +264,7 @@ fun HabitSelectionScreen(
                         TextButton(
                             onClick = {
                                 habitToDelete?.let {
+                                    habitProgressMap.remove(it.id)
                                     habitViewModel.deleteHabit(it.toEntity())
                                 }
                                 showDeleteDialog = false
@@ -275,11 +285,10 @@ fun HabitSelectionScreen(
                         }
                     }
                 )
-            } // End Delete Dialog
+            }
 
-            // --- NEW: New Category Dialog --- (Implementation)
+
             if (showNewCategoryDialog) {
-                // Define state specifically for the dialog's error handling
                 var categoryNameError by remember { mutableStateOf<String?>(null) }
                 val existingCategories = remember(habits) {
                     habits.mapNotNull { it.category?.lowercase() }.toSet()
@@ -287,29 +296,25 @@ fun HabitSelectionScreen(
 
                 AlertDialog(
                     onDismissRequest = {
-                        // User clicked outside or pressed back
                         showNewCategoryDialog = false
-                        newCategoryNameInput = "" // Clear input on dismiss
-                        categoryNameError = null // Clear error
+                        newCategoryNameInput = ""
+                        categoryNameError = null
                     },
                     title = { Text("New Habit Category") },
                     text = {
-                        // Column to hold TextField and potential error message
                         Column {
                             OutlinedTextField(
                                 value = newCategoryNameInput,
                                 onValueChange = {
                                     newCategoryNameInput = it
-                                    // Clear error when user types
                                     if (categoryNameError != null) {
                                         categoryNameError = null
                                     }
                                 },
                                 label = { Text("Category Name") },
                                 singleLine = true,
-                                isError = categoryNameError != null // Show error state if message exists
+                                isError = categoryNameError != null
                             )
-                            // Display error message if present
                             if (categoryNameError != null) {
                                 Text(
                                     text = categoryNameError!!,
@@ -324,23 +329,19 @@ fun HabitSelectionScreen(
                         TextButton(
                             onClick = {
                                 val trimmedName = newCategoryNameInput.trim()
-                                // --- Validation ---
                                 if (trimmedName.isBlank()) {
                                     categoryNameError = "Category name cannot be empty."
                                 } else if (existingCategories.contains(trimmedName.lowercase())) {
                                     categoryNameError = "'$trimmedName' already exists."
                                 } else {
-                                    // --- Validation Passed ---
-                                    categoryNameError = null // Clear any previous error
-                                    showNewCategoryDialog = false // Close dialog
-                                    // Navigate to add habit details for the new category
+                                    categoryNameError = null
+                                    showNewCategoryDialog = false
                                     navController.navigate(
                                         AppDestinations.buildAddHabitDetailsRoute(trimmedName)
                                     )
-                                    newCategoryNameInput = "" // Clear input after navigation
+                                    newCategoryNameInput = ""
                                 }
                             },
-                            // Disable button if input is blank initially
                             enabled = newCategoryNameInput.isNotBlank()
                         ) {
                             Text("Create & Add Habit")
@@ -350,8 +351,8 @@ fun HabitSelectionScreen(
                         TextButton(
                             onClick = {
                                 showNewCategoryDialog = false
-                                newCategoryNameInput = "" // Clear input
-                                categoryNameError = null // Clear error
+                                newCategoryNameInput = ""
+                                categoryNameError = null
                             }
                         ) {
                             Text("Cancel")
@@ -359,10 +360,50 @@ fun HabitSelectionScreen(
                     }
                 )
             }
-            // --- END NEW CATEGORY DIALOG ---
 
-        } // End Outer Box
-    } // End Scaffold
+            if (showScalableInputDialog && scalableHabitToEdit != null) {
+                val scaleOptions =
+                    remember { listOf(null to "None", 1 to "Low", 2 to "Med", 3 to "High") }
+                val currentLevel = habitProgressMap[scalableHabitToEdit?.id]
+
+                AlertDialog(
+                    onDismissRequest = {
+                        showScalableInputDialog = false
+                        scalableHabitToEdit = null
+                    },
+                    // Provide content in the TRAILING LAMBDA
+                    content = {
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp, bottom = 8.dp) // Add some padding
+                        ) {
+                            scaleOptions.forEachIndexed { index, (levelValue, levelLabel) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = scaleOptions.size
+                                    ),
+                                    onClick = {
+                                        scalableHabitToEdit?.let {
+                                            habitProgressMap[it.id] = levelValue
+                                        }
+                                        showScalableInputDialog = false
+                                        scalableHabitToEdit = null
+                                    },
+                                    selected = (levelValue == currentLevel)
+                                ) {
+                                    Text(levelLabel)
+                                }
+                            }
+                        }
+                    } // End of content lambda
+                ) // End AlertDialog call
+            }
+
+
+        }
+    }
 }
 
 @Composable

@@ -6,6 +6,5 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "habit_entries")
 data class HabitEntryEntity(
     @PrimaryKey val date: String,
-    val mood: String,
-    val habitIds: List<Int>  // ← make sure this exists!
+    val mood: String
 )

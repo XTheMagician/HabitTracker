@@ -216,8 +216,12 @@ object DefaultHabits {
 }
 
 @Database(
-    entities = [HabitEntryEntity::class, HabitEntity::class],
-    version = 3, // Or your current/reset version
+    entities = [
+        HabitEntryEntity::class,
+        HabitEntity::class,
+        HabitProgressEntity::class // <<< THIS MUST BE PRESENT!!!
+    ],
+    version = 4, // Version looks correct
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -225,6 +229,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun habitEntryDao(): HabitEntryDao
     abstract fun habitDao(): HabitDao
+    abstract fun habitProgressDao(): HabitProgressDao
 
     companion object {
         @Volatile
