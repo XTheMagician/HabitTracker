@@ -1,6 +1,7 @@
 package com.example.habit_tracker.ui.screens.habit
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,6 +61,8 @@ import com.example.habit_tracker.model.getLabelForMood
 import com.example.habit_tracker.model.toEntity
 import com.example.habit_tracker.ui.navigation.AppDestinations
 import com.example.habit_tracker.ui.screens.mood.MoodOption
+import com.example.habit_tracker.ui.theme.MaterialSymbols
+import com.example.habit_tracker.utils.MaterialSymbolsRepository
 import com.example.habit_tracker.viewmodel.HabitEntryViewModel
 import com.example.habit_tracker.viewmodel.HabitViewModel
 import kotlinx.coroutines.flow.firstOrNull
@@ -77,19 +82,26 @@ fun HabitSelectionScreen(
     var selectedMood by remember { mutableStateOf(mood) }
     val scrollState = rememberScrollState()
 
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var habitToDelete by remember { mutableStateOf<Habit?>(null) }
+
     LaunchedEffect(habits) {
         if (habits.isNotEmpty()) {
-            val allHabitEntities = habits.map { it.toEntity() }
-            val matchingEntry = entryViewModel
-                .getEntriesWithHabits(allHabitEntities)
-                .firstOrNull()
-                ?.find { it.date == date }
+            val allHabitEntities =
+                habits.mapNotNull { it?.toEntity() } // Handle potential nulls if list source changes
+            if (allHabitEntities.isNotEmpty()) { // Check if mapping resulted in non-empty list
+                val matchingEntry = entryViewModel
+                    .getEntriesWithHabits(allHabitEntities) // Ensure this exists and is correct
+                    .firstOrNull()
+                    ?.find { it.date == date }
 
-            matchingEntry?.habits?.forEach { habitProgress ->
-                selectedHabits[habitProgress.habit.id] = true
+                matchingEntry?.habits?.forEach { habitProgress ->
+                    selectedHabits[habitProgress.habit.id] = true
+                }
             }
         }
     }
+
 
     fun save() {
         val selected = habits.filter { selectedHabits[it.id] == true }
@@ -100,10 +112,10 @@ fun HabitSelectionScreen(
             habits = selected.map { habit -> HabitProgress(habit) }
         )
 
-        entryViewModel.saveEntry(entry.toEntity())
+        entryViewModel.saveEntry(entry.toEntity()) // Assuming HabitEntry.toEntity exists
 
-        navController.navigate("home") {
-            popUpTo("home") { inclusive = true }
+        navController.navigate(AppDestinations.HOME) { // Use constant
+            popUpTo(AppDestinations.HOME) { inclusive = true }
             launchSingleTop = true
         }
     }
@@ -184,6 +196,10 @@ fun HabitSelectionScreen(
                                     onClick = {
                                         selectedHabits[habit.id] =
                                             !(selectedHabits[habit.id] ?: false)
+                                    },
+                                    onLongClick = {
+                                        habitToDelete = habit
+                                        showDeleteDialog = true
                                     }
                                 )
                             }
@@ -202,6 +218,42 @@ fun HabitSelectionScreen(
                     Icon(Icons.Default.Check, contentDescription = "Speichern")
                 }
             }
+
+
+            if (showDeleteDialog && habitToDelete != null) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showDeleteDialog = false
+                        habitToDelete = null
+                    },
+                    title = { Text("Delete Habit") },
+                    text = { Text("Are you sure you want to delete '${habitToDelete?.name}'?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                habitToDelete?.let {
+                                    habitViewModel.deleteHabit(it.toEntity())
+                                }
+                                showDeleteDialog = false
+                                habitToDelete = null
+                            }
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                                habitToDelete = null
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+
         }
     }
 }
@@ -230,44 +282,61 @@ fun HabitGroupCard(
                     Icon(Icons.Default.Add, contentDescription = "Add")
                 }
             }
-
             Spacer(modifier = Modifier.height(12.dp))
             content()
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HabitButton(
     habit: Habit,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { MaterialSymbolsRepository.preload(context) }
+
+
     val bgColor =
         if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)
-    val contentColor = if (selected) Color.White else Color.Black
+    val contentColor =
+        if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(4.dp)
     ) {
         Surface(
             shape = CircleShape,
             color = bgColor,
             modifier = Modifier.size(56.dp),
-            tonalElevation = 4.dp,
-            shadowElevation = 2.dp
+            tonalElevation = if (selected) 2.dp else 1.dp,
+            shadowElevation = if (selected) 4.dp else 2.dp
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = habit.icon,
-                    contentDescription = habit.name,
-                    tint = contentColor
+
+                val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(
+                    habit.iconKey,
+                    fallbackSymbolName = "question_mark"
+                )
+
+                Text(
+                    text = symbolChar,
+                    fontFamily = MaterialSymbols,
+                    fontSize = 32.sp,
+                    color = contentColor
                 )
             }
         }

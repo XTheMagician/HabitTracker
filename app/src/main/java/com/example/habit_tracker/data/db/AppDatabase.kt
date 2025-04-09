@@ -6,13 +6,218 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.habit_tracker.model.HabitType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+
+object DefaultHabits {
+    val list = listOf(
+        HabitEntity(
+            name = "Read",
+            iconName = "menu_book",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Paint or Draw",
+            iconName = "palette",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Play Instrument",
+            iconName = "music_note",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Read News",
+            iconName = "article",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Go Outside",
+            iconName = "park",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Listen to Music",
+            iconName = "headphones",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Movie Night",
+            iconName = "movie",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Relax",
+            iconName = "self_improvement",
+            category = "Freetime",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Workout",
+            iconName = "fitness_center",
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Walk",
+            iconName = "directions_walk",
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Drink Water",
+            iconName = "water_drop",
+            category = "Health",
+            type = HabitType.SCALE
+        ),
+        HabitEntity(
+            name = "Sleep Early",
+            iconName = "bedtime",
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Meditation",
+            iconName = "sentiment_calm",
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Write Journal",
+            iconName = "edit_note",
+            category = "Mindfulness",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Study",
+            iconName = "school",
+            category = "Work",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Plan Day",
+            iconName = "event",
+            category = "Work",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Practice Language",
+            iconName = "translate",
+            category = "Work",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Computer Work",
+            iconName = "computer",
+            category = "Work",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Clean Room",
+            iconName = "cleaning_services",
+            category = "Household",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Grocery Shopping",
+            iconName = "shopping_cart",
+            category = "Household",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Call Family",
+            iconName = "call",
+            category = "Social",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Write Message",
+            iconName = "chat",
+            category = "Social",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Meet Friend",
+            iconName = "group",
+            category = "Social",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Eat Breakfast",
+            iconName = "bakery_dining",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Eat Lunch",
+            iconName = "lunch_dining",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Eat Dinner",
+            iconName = "dinner_dining",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Brush Teeth",
+            iconName = "brush",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Drink Coffee",
+            iconName = "local_cafe",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Wake Up",
+            iconName = "wb_sunny",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Go to Sleep",
+            iconName = "bedtime",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Set Alarm",
+            iconName = "alarm",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Power Nap",
+            iconName = "airline_seat_individual_suite",
+            category = "Routine",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Walk the Dog",
+            iconName = "pets",
+            category = "Pets",
+            type = HabitType.BINARY
+        )
+    )
+}
 
 @Database(
     entities = [HabitEntryEntity::class, HabitEntity::class],
-    version = 3,
+    version = 3, // Or your current/reset version
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -24,6 +229,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+        private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -33,7 +239,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "habit_database"
                 )
                     .fallbackToDestructiveMigration()
-                    .addCallback(AppDatabaseCallback(context.applicationContext))
+                    .addCallback(AppDatabaseCallback(applicationScope))
                     .build()
                 INSTANCE = instance
                 instance
@@ -42,99 +248,15 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     private class AppDatabaseCallback(
-        private val context: Context
+        private val scope: CoroutineScope
     ) : Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
-            CoroutineScope(Dispatchers.IO).launch {
-                val dao = getDatabase(context).habitDao()
-
-                dao.insertAll(
-                    // --- Freetime ---
-                    HabitEntity(name = "Read", iconName = "Reading", category = "Freetime"),
-                    HabitEntity(name = "Paint or Draw", iconName = "Brush", category = "Freetime"),
-                    HabitEntity(
-                        name = "Play Instrument",
-                        iconName = "MusicNote",
-                        category = "Freetime"
-                    ),
-                    HabitEntity(name = "Read News", iconName = "Newspaper", category = "Freetime"),
-                    HabitEntity(name = "Go Outside", iconName = "Park", category = "Freetime"),
-                    HabitEntity(
-                        name = "Listen to Music",
-                        iconName = "Headphones",
-                        category = "Freetime"
-                    ),
-                    HabitEntity(name = "Movie Night", iconName = "Movie", category = "Freetime"),
-                    HabitEntity(
-                        name = "Relax",
-                        iconName = "SelfImprovement",
-                        category = "Freetime"
-                    ),
-
-                    // --- Health ---
-                    HabitEntity(name = "Workout", iconName = "FitnessCenter", category = "Health"),
-                    HabitEntity(name = "Walk", iconName = "Run", category = "Health"),
-                    HabitEntity(name = "Drink Water", iconName = "LocalDrink", category = "Health"),
-                    HabitEntity(name = "Sleep Early", iconName = "Bedtime", category = "Health"),
-                    HabitEntity(name = "Meditation", iconName = "Meditation", category = "Health"),
-
-                    // --- Mindfulness ---
-                    HabitEntity(
-                        name = "Write Journal",
-                        iconName = "Edit",
-                        category = "Mindfulness"
-                    ),
-
-                    // --- Work/Productivity ---
-                    HabitEntity(name = "Study", iconName = "School", category = "Work"),
-                    HabitEntity(name = "Plan Day", iconName = "EventNote", category = "Work"),
-                    HabitEntity(
-                        name = "Practice Language",
-                        iconName = "Translate",
-                        category = "Work"
-                    ),
-                    HabitEntity(name = "Computer Work", iconName = "Computer", category = "Work"),
-
-                    // --- Household ---
-                    HabitEntity(name = "Clean Room", iconName = "Cleaning", category = "Household"),
-                    HabitEntity(
-                        name = "Grocery Shopping",
-                        iconName = "ShoppingCart",
-                        category = "Household"
-                    ),
-
-                    // --- Social ---
-                    HabitEntity(name = "Call Family", iconName = "Phone", category = "Social"),
-                    HabitEntity(name = "Write Message", iconName = "Edit", category = "Social"),
-                    HabitEntity(name = "Meet Friend", iconName = "Group", category = "Social"),
-
-                    // --- Routine ---
-                    HabitEntity(
-                        name = "Eat Breakfast",
-                        iconName = "Breakfast",
-                        category = "Routine"
-                    ),
-                    HabitEntity(name = "Eat Lunch", iconName = "Lunch", category = "Routine"),
-                    HabitEntity(name = "Eat Dinner", iconName = "Dinner", category = "Routine"),
-                    HabitEntity(
-                        name = "Brush Teeth",
-                        iconName = "Toothbrush",
-                        category = "Routine"
-                    ),
-                    HabitEntity(
-                        name = "Drink Coffee",
-                        iconName = "DrinkCoffee",
-                        category = "Routine"
-                    ),
-                    HabitEntity(name = "Wake Up", iconName = "Sun", category = "Routine"),
-                    HabitEntity(name = "Go to Sleep", iconName = "Bedtime", category = "Routine"),
-                    HabitEntity(name = "Set Alarm", iconName = "Alarm", category = "Routine"),
-                    HabitEntity(name = "Power Nap", iconName = "Nap", category = "Routine"),
-
-                    // --- Pets ---
-                    HabitEntity(name = "Walk the Dog", iconName = "WalkDog", category = "Pets")
-                )
+            INSTANCE?.let { database ->
+                scope.launch {
+                    val dao = database.habitDao()
+                    dao.insertAll(*DefaultHabits.list.toTypedArray())
+                }
             }
         }
     }

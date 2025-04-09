@@ -2,11 +2,20 @@ package com.example.habit_tracker.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font // <-- Added Font import
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.habit_tracker.R // <-- Added Import for your project's R class
 
-// Set of Material typography styles to start with
+// --- NEW: Define the FontFamily for the Material Symbols ---
+val MaterialSymbols = FontFamily(
+    Font(R.font.material_symbols_outlined_variable) // Reference the font file in res/font
+)
+// --- End of new code ---
+
+
+// Set of Material typography styles to start with (Your existing code)
 val Typography = Typography(
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,

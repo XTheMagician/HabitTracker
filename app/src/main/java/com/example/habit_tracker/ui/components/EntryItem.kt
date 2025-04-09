@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import com.example.habit_tracker.model.HabitEntry
 import com.example.habit_tracker.model.getIconForMood
 import com.example.habit_tracker.model.getLabelForMood
+import com.example.habit_tracker.ui.theme.MaterialSymbols
+import com.example.habit_tracker.utils.MaterialSymbolsRepository
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -45,6 +47,10 @@ fun EntryItem(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val dateText = entry.date.format(DateTimeFormatter.ofPattern("dd. MMM yyyy"))
+
+    // Optional: Preload if needed and not done elsewhere
+    // val context = LocalContext.current
+    // LaunchedEffect(Unit) { MaterialSymbolsRepository.preload(context) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -63,6 +69,7 @@ fun EntryItem(
                 ) {
                     Text(text = dateText, style = MaterialTheme.typography.bodyMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Assuming getIconForMood still uses ImageVector
                         Icon(
                             imageVector = getIconForMood(entry.mood),
                             contentDescription = "Mood Icon",
@@ -109,14 +116,27 @@ fun EntryItem(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                entry.habits.forEach {
+                entry.habits.forEach { habitProgress -> // Renamed 'it' for clarity
+                    val habit = habitProgress.habit // Get the Habit object
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(it.habit.icon, contentDescription = it.habit.name)
-                        Spacer(Modifier.width(4.dp))
-                        Text(it.habit.name, fontSize = 14.sp)
+                        // *** Get the character string for the symbol name ***
+                        val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(habit.iconKey)
+
+                        // *** USE TEXT INSTEAD OF ICON ***
+                        Text(
+                            text = symbolChar,
+                            fontFamily = MaterialSymbols, // Apply the symbol font
+                            fontSize = 18.sp, // Adjust size as needed
+                            modifier = Modifier.padding(end = 4.dp), // Add padding like the old Spacer
+                            color = MaterialTheme.colorScheme.onSurfaceVariant // Match text color
+                        )
+                        // *** END OF TEXT INSTEAD OF ICON ***
+
+                        Text(habit.name, fontSize = 14.sp) // Display habit name
                     }
                 }
-            }
-        }
-    }
+            } // End FlowRow
+        } // End Column
+    } // End Card
 }
