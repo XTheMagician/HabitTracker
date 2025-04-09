@@ -38,7 +38,7 @@ import com.example.habit_tracker.model.HabitType
 import com.example.habit_tracker.model.getIconForMood
 import com.example.habit_tracker.model.getLabelForMood
 import com.example.habit_tracker.ui.theme.MaterialSymbols
-import com.example.habit_tracker.utils.MaterialSymbolsRepository
+import com.example.habit_tracker.utils.MaterialSymbolsRepository // Check Path
 import java.time.format.DateTimeFormatter
 
 
@@ -65,18 +65,17 @@ fun EntryItem(
     LaunchedEffect(Unit) { MaterialSymbolsRepository.preload(context) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(), // Card will take full width
-        // Height will be determined by content unless constrained by parent
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) { // Column wraps content
+        Column(modifier = Modifier.padding(16.dp)) {
 
-            Row( // Top row for Date/Mood/Menu
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
-                Column( // Column for Date/Mood
+                Column(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(text = dateText, style = MaterialTheme.typography.bodyMedium)
@@ -94,7 +93,7 @@ fun EntryItem(
                     }
                 }
 
-                Box { // Box for Menu Button/Dropdown
+                Box {
                     IconButton(onClick = { expanded = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options")
                     }
@@ -120,13 +119,11 @@ fun EntryItem(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp)) // Space between top row and habits
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Habits display using FlowRow
-            if (entry.habits.isNotEmpty()) { // Conditionally display FlowRow if habits exist
+            if (entry.habits.isNotEmpty()) {
                 FlowRow(
-                    modifier = Modifier.fillMaxWidth(), // Allow FlowRow to use available width
-                    // Height will depend on how many rows it needs to wrap
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -156,8 +153,8 @@ fun EntryItem(
                             Text(displayText, fontSize = 14.sp)
                         }
                     }
-                } // End FlowRow
-            } // End if habits not empty
-        } // End Main Column inside Card
-    } // End Card
+                }
+            }
+        }
+    }
 }
