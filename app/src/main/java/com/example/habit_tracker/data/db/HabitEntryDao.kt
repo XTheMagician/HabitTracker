@@ -22,9 +22,6 @@ interface HabitEntryDao {
     @Query("DELETE FROM habit_entries WHERE date = :date")
     suspend fun deleteByDate(date: String)
 
-    @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
-    fun getHabitProgressForDate(date: String): Flow<List<HabitProgressEntity>>
-
     // Add to HabitEntryDao interface
     @Query("SELECT * FROM habit_entries WHERE date = :date LIMIT 1")
     suspend fun getEntryByDateOnce(date: String): HabitEntryEntity? // Returns nullable entity

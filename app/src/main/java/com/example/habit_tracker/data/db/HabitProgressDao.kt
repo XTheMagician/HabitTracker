@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HabitProgressDao {
@@ -23,5 +24,7 @@ interface HabitProgressDao {
     // In HabitProgressDao.kt
     @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
     suspend fun getProgressForDateOnce(date: String): List<HabitProgressEntity> // <-- REMOVED Nullable '?'
-
+    
+    @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
+    fun getHabitProgressForDate(date: String): Flow<List<HabitProgressEntity>>
 }
