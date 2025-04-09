@@ -24,6 +24,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +33,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -85,13 +88,17 @@ fun HabitSelectionScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var habitToDelete by remember { mutableStateOf<Habit?>(null) }
 
+    // --- NEW: State for New Category Dialog ---
+    var showNewCategoryDialog by remember { mutableStateOf(false) }
+    var newCategoryNameInput by remember { mutableStateOf("") }
+    // --- END NEW STATE ---
+
     LaunchedEffect(habits) {
         if (habits.isNotEmpty()) {
-            val allHabitEntities =
-                habits.mapNotNull { it?.toEntity() } // Handle potential nulls if list source changes
-            if (allHabitEntities.isNotEmpty()) { // Check if mapping resulted in non-empty list
+            val allHabitEntities = habits.mapNotNull { it?.toEntity() }
+            if (allHabitEntities.isNotEmpty()) {
                 val matchingEntry = entryViewModel
-                    .getEntriesWithHabits(allHabitEntities) // Ensure this exists and is correct
+                    .getEntriesWithHabits(allHabitEntities)
                     .firstOrNull()
                     ?.find { it.date == date }
 
@@ -102,19 +109,15 @@ fun HabitSelectionScreen(
         }
     }
 
-
     fun save() {
         val selected = habits.filter { selectedHabits[it.id] == true }
-
         val entry = HabitEntry(
             date = date,
             mood = selectedMood,
             habits = selected.map { habit -> HabitProgress(habit) }
         )
-
-        entryViewModel.saveEntry(entry.toEntity()) // Assuming HabitEntry.toEntity exists
-
-        navController.navigate(AppDestinations.HOME) { // Use constant
+        entryViewModel.saveEntry(entry.toEntity())
+        navController.navigate(AppDestinations.HOME) {
             popUpTo(AppDestinations.HOME) { inclusive = true }
             launchSingleTop = true
         }
@@ -149,7 +152,7 @@ fun HabitSelectionScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 72.dp),
+                    .padding(bottom = 120.dp), // Ensure padding for FAB + new button
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Text(
@@ -205,13 +208,33 @@ fun HabitSelectionScreen(
                             }
                         }
                     }
-                }
-            }
+                } // End groupBy
 
-            Box(
+                // --- NEW: Button to Add New Category ---
+                Button( // Or TextButton for less emphasis
+                    onClick = {
+                        newCategoryNameInput = "" // Clear previous input
+                        showNewCategoryDialog = true // Show the dialog
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally) // Center the button
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text("Add New Category")
+                }
+                // --- END NEW BUTTON ---
+
+            } // End Main Column
+
+            Box( // FAB Box
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 24.dp),
+
                 contentAlignment = Alignment.BottomCenter
             ) {
                 FloatingActionButton(onClick = { save() }) {
@@ -219,7 +242,7 @@ fun HabitSelectionScreen(
                 }
             }
 
-
+            // --- Delete Dialog --- (Keep existing dialog logic)
             if (showDeleteDialog && habitToDelete != null) {
                 AlertDialog(
                     onDismissRequest = {
@@ -252,10 +275,94 @@ fun HabitSelectionScreen(
                         }
                     }
                 )
-            }
+            } // End Delete Dialog
 
-        }
-    }
+            // --- NEW: New Category Dialog --- (Implementation)
+            if (showNewCategoryDialog) {
+                // Define state specifically for the dialog's error handling
+                var categoryNameError by remember { mutableStateOf<String?>(null) }
+                val existingCategories = remember(habits) {
+                    habits.mapNotNull { it.category?.lowercase() }.toSet()
+                }
+
+                AlertDialog(
+                    onDismissRequest = {
+                        // User clicked outside or pressed back
+                        showNewCategoryDialog = false
+                        newCategoryNameInput = "" // Clear input on dismiss
+                        categoryNameError = null // Clear error
+                    },
+                    title = { Text("New Habit Category") },
+                    text = {
+                        // Column to hold TextField and potential error message
+                        Column {
+                            OutlinedTextField(
+                                value = newCategoryNameInput,
+                                onValueChange = {
+                                    newCategoryNameInput = it
+                                    // Clear error when user types
+                                    if (categoryNameError != null) {
+                                        categoryNameError = null
+                                    }
+                                },
+                                label = { Text("Category Name") },
+                                singleLine = true,
+                                isError = categoryNameError != null // Show error state if message exists
+                            )
+                            // Display error message if present
+                            if (categoryNameError != null) {
+                                Text(
+                                    text = categoryNameError!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val trimmedName = newCategoryNameInput.trim()
+                                // --- Validation ---
+                                if (trimmedName.isBlank()) {
+                                    categoryNameError = "Category name cannot be empty."
+                                } else if (existingCategories.contains(trimmedName.lowercase())) {
+                                    categoryNameError = "'$trimmedName' already exists."
+                                } else {
+                                    // --- Validation Passed ---
+                                    categoryNameError = null // Clear any previous error
+                                    showNewCategoryDialog = false // Close dialog
+                                    // Navigate to add habit details for the new category
+                                    navController.navigate(
+                                        AppDestinations.buildAddHabitDetailsRoute(trimmedName)
+                                    )
+                                    newCategoryNameInput = "" // Clear input after navigation
+                                }
+                            },
+                            // Disable button if input is blank initially
+                            enabled = newCategoryNameInput.isNotBlank()
+                        ) {
+                            Text("Create & Add Habit")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showNewCategoryDialog = false
+                                newCategoryNameInput = "" // Clear input
+                                categoryNameError = null // Clear error
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+            // --- END NEW CATEGORY DIALOG ---
+
+        } // End Outer Box
+    } // End Scaffold
 }
 
 @Composable
@@ -299,12 +406,10 @@ fun HabitButton(
     val context = LocalContext.current
     LaunchedEffect(Unit) { MaterialSymbolsRepository.preload(context) }
 
-
     val bgColor =
         if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)
     val contentColor =
         if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -326,12 +431,10 @@ fun HabitButton(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-
                 val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(
                     habit.iconKey,
                     fallbackSymbolName = "question_mark"
                 )
-
                 Text(
                     text = symbolChar,
                     fontFamily = MaterialSymbols,
