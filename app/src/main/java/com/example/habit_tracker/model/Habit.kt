@@ -1,10 +1,8 @@
 package com.example.habit_tracker.model
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.habit_tracker.data.db.HabitEntity
-import iconMap
+import com.example.habit_tracker.ui.theme.AppIcons
 
 enum class HabitType {
     BINARY,
@@ -34,7 +32,7 @@ fun HabitEntity.toUiModel(): Habit {
 
 
 fun getIconByName(name: String): ImageVector {
-    return iconMap[name] ?: Icons.Filled.Check
+    return AppIcons.map[name] ?: AppIcons.defaultIcon
 }
 
 fun Habit.toEntity(): HabitEntity {

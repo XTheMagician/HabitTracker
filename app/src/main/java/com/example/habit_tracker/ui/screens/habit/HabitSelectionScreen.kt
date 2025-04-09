@@ -56,6 +56,7 @@ import com.example.habit_tracker.model.Mood
 import com.example.habit_tracker.model.getIconForMood
 import com.example.habit_tracker.model.getLabelForMood
 import com.example.habit_tracker.model.toEntity
+import com.example.habit_tracker.ui.navigation.AppDestinations
 import com.example.habit_tracker.ui.screens.mood.MoodOption
 import com.example.habit_tracker.viewmodel.HabitEntryViewModel
 import com.example.habit_tracker.viewmodel.HabitViewModel
@@ -162,9 +163,15 @@ fun HabitSelectionScreen(
 
                 habits.groupBy { it.category }.forEach { (category, habitGroup) ->
                     HabitGroupCard(
-                        title = category,
-                        onAddClick = { /* TODO: Handle group edit later */ }
-                    ) {
+                        title = category ?: "General",
+                        onAddClick = {
+                            val categoryNameToPass = category ?: "General"
+                            navController.navigate(
+                                AppDestinations.buildAddHabitDetailsRoute(
+                                    categoryNameToPass
+                                )
+                            )
+                        }) {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
