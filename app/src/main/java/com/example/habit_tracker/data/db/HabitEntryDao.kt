@@ -29,4 +29,12 @@ interface HabitEntryDao {
     // Add to HabitProgressDao interface
     @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
     suspend fun getProgressForDateOnce(date: String): List<HabitProgressEntity>? // Returns nullable list
+
+    // Add to HabitEntryDao.kt interface
+    @Query("SELECT date, mood FROM habit_entries WHERE date >= :startDate ORDER BY date ASC")
+    fun getMoodEntriesSince(startDate: String): Flow<List<MoodDataPoint>> // Returns Flow of simplified data
+
 }
+
+// Define a simple data class for the query result (can be inside the DAO file or a separate file)
+data class MoodDataPoint(val date: String, val mood: String)
