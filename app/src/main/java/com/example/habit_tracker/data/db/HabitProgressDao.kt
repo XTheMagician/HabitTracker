@@ -21,13 +21,21 @@ interface HabitProgressDao {
     @Query("DELETE FROM habit_progress WHERE entryDate = :date")
     suspend fun deleteAllProgressForDate(date: String)
 
-    // In HabitProgressDao.kt
+    // Get progress for a single date (non-Flow)
     @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
-    suspend fun getProgressForDateOnce(date: String): List<HabitProgressEntity> // <-- REMOVED Nullable '?'
+    suspend fun getProgressForDateOnce(date: String): List<HabitProgressEntity>
 
+    // Get progress for a single date (Flow)
     @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
     fun getHabitProgressForDate(date: String): Flow<List<HabitProgressEntity>>
 
+    // Original function for getting all progress since a start date
     @Query("SELECT * FROM habit_progress WHERE entryDate >= :startDate")
     fun getAllProgressSince(startDate: String): Flow<List<HabitProgressEntity>>
+
+    // --- NEW FUNCTION for getting progress data within a specific month ---
+    @Query("SELECT * FROM habit_progress WHERE entryDate BETWEEN :startDate AND :endDate")
+    fun getAllProgressForMonth(startDate: String, endDate: String): Flow<List<HabitProgressEntity>>
+    // --- END NEW FUNCTION ---
+
 }

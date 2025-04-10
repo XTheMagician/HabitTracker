@@ -33,9 +33,8 @@ import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 fun MoodChartCard(
     viewModel: StatisticsViewModel
 ) {
-    // Collect the chart data and state flags from your ViewModel.
     val chartData by viewModel.moodChartData.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle() // <-- NEW NAME
     val showChart by viewModel.showMoodChart.collectAsStateWithLifecycle()
 
     // Create the model producer.
