@@ -67,7 +67,7 @@ fun MoodLineChartCard( // Renamed the function
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Slightly different title for clarity
-            Text("Mood Trend (Line)", style = MaterialTheme.typography.titleMedium)
+            Text("Mood Trend", style = MaterialTheme.typography.titleMedium)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -53,7 +53,7 @@ fun HabitFrequencyCard(
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
-            Text("Habit Completions (Last 30 Days)", style = MaterialTheme.typography.titleMedium)
+            Text("Habit Completions", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
 
             Box(

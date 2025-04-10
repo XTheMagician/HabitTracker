@@ -61,7 +61,7 @@ fun MoodChartCard(
             .padding(vertical = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Mood Last 30 Days", style = MaterialTheme.typography.titleMedium)
+            Text("Mood Frequency", style = MaterialTheme.typography.titleMedium)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
