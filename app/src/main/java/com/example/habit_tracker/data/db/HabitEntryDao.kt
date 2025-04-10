@@ -34,6 +34,9 @@ interface HabitEntryDao {
     @Query("SELECT date, mood FROM habit_entries WHERE date >= :startDate ORDER BY date ASC")
     fun getMoodEntriesSince(startDate: String): Flow<List<MoodDataPoint>> // Returns Flow of simplified data
 
+    @Query("SELECT * FROM habit_entries WHERE date >= :startDate ORDER BY date ASC")
+    fun getAllEntriesSince(startDate: String): Flow<List<HabitEntryEntity>> // Returns Flow of full entities
+
 }
 
 // Define a simple data class for the query result (can be inside the DAO file or a separate file)

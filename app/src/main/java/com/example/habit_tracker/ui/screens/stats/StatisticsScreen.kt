@@ -1,11 +1,11 @@
-package com.example.habit_tracker.ui.screens.stats // Or .screens
+package com.example.habit_tracker.ui.screens.stats // Adjust package if needed
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer // Import Spacer
-import androidx.compose.foundation.layout.height // Import height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState // Import if needed
-import androidx.compose.foundation.verticalScroll // Import if needed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -15,40 +15,48 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.habit_tracker.ui.components.BottomNavigationBar // Import your BottomNavBar
-import com.example.habit_tracker.ui.components.MoodChartCard // Your original working column chart
-import com.example.habit_tracker.ui.components.MoodLineChartCard // Import the NEW line chart card
+import com.example.habit_tracker.ui.components.BottomNavigationBar
+import com.example.habit_tracker.ui.components.HabitFrequencyCard
+import com.example.habit_tracker.ui.components.MoodChartCard
+import com.example.habit_tracker.ui.components.MoodLineChartCard
 import com.example.habit_tracker.viewmodel.StatisticsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
-    navController: NavController, // For navigation if needed
-    statisticsViewModel: StatisticsViewModel = viewModel()
+    navController: NavController,
+    statisticsViewModel: StatisticsViewModel = viewModel() // Uses the single ViewModel instance
 ) {
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Statistics") })
-            // Add navigation icon if needed
         },
         bottomBar = {
             BottomNavigationBar(navController)
         }
     ) { innerPadding ->
+        // Column is already set up to be scrollable
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp) // Apply horizontal padding once
-                .verticalScroll(rememberScrollState()) // Add scrolling
+                .padding(horizontal = 16.dp) // Horizontal padding for the content
+                .verticalScroll(rememberScrollState()) // Enables scrolling
         ) {
-            // Original Column Chart
+            // Card 1: Mood Column Chart
             MoodChartCard(viewModel = statisticsViewModel)
+            // Optional Spacer if you want space back
+
+            // Card 2: Mood Line Chart
+            MoodLineChartCard(viewModel = statisticsViewModel)
+            // Optional Spacer
+
+            // --- Card 3: Habit Frequency List (NEW) ---
+            HabitFrequencyCard(viewModel = statisticsViewModel)
+            // --- End New Card ---
 
 
-            // New Line Chart
-            MoodLineChartCard(viewModel = statisticsViewModel) // Add the new card
-
-            Spacer(modifier = Modifier.height(16.dp)) // Optional space at the bottom
+            // Optional padding at the very bottom inside the scrollable area
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

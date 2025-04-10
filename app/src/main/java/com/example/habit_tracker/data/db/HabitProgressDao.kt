@@ -24,7 +24,10 @@ interface HabitProgressDao {
     // In HabitProgressDao.kt
     @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
     suspend fun getProgressForDateOnce(date: String): List<HabitProgressEntity> // <-- REMOVED Nullable '?'
-    
+
     @Query("SELECT * FROM habit_progress WHERE entryDate = :date")
     fun getHabitProgressForDate(date: String): Flow<List<HabitProgressEntity>>
+
+    @Query("SELECT * FROM habit_progress WHERE entryDate >= :startDate")
+    fun getAllProgressSince(startDate: String): Flow<List<HabitProgressEntity>>
 }
