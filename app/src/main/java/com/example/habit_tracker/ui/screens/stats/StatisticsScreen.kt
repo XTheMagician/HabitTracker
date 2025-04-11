@@ -27,6 +27,7 @@ import com.example.habit_tracker.ui.components.HabitFrequencyCard
 import com.example.habit_tracker.ui.components.MoodChartCard
 import com.example.habit_tracker.ui.components.MoodDistributionChartCard
 import com.example.habit_tracker.ui.components.MoodLineChartCard
+import com.example.habit_tracker.ui.components.YearInPixelsCard
 import com.example.habit_tracker.ui.components.YearSwitcher
 import com.example.habit_tracker.ui.screens.home.MonthSwitcher
 import com.example.habit_tracker.viewmodel.StatisticsMode
@@ -46,7 +47,9 @@ fun StatisticsScreen(
     val currentYear by statisticsViewModel.currentYear.collectAsStateWithLifecycle()
     val showMoodCharts by statisticsViewModel.showMoodChart.collectAsStateWithLifecycle()
     val moodSummary by statisticsViewModel.moodSummaryData.collectAsStateWithLifecycle()
-    val isMoodLoading by statisticsViewModel.isMoodLoading.collectAsStateWithLifecycle() // Needed for new card
+    val isMoodLoading by statisticsViewModel.isMoodLoading.collectAsStateWithLifecycle()
+    val yearPixelsData by statisticsViewModel.yearInPixelsData.collectAsStateWithLifecycle()
+    val isYearPixelsLoading by statisticsViewModel.isYearInPixelsLoading.collectAsStateWithLifecycle()
 
     val monthYearFormatter = remember(Locale.getDefault()) {
         DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())
@@ -117,14 +120,14 @@ fun StatisticsScreen(
                         moodDistribution = moodSummary?.distribution,
                         isLoading = isMoodLoading // Use the mood loading flag
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    YearInPixelsCard(
+                        selectedYear = currentYear, // Pass the selected year
+                        pixelData = yearPixelsData, // Pass the map data
+                        isLoading = isYearPixelsLoading // Pass the loading state
+                    )
                 }
-                // *** End MoodDistributionChartCard usage ***
-
-                // Habit Frequency Card (Works for both modes)
                 HabitFrequencyCard(viewModel = statisticsViewModel)
-
-                Spacer(modifier = Modifier.height(16.dp)) // Bottom padding
+                Spacer(modifier = Modifier.height(8.dp)) // Bottom padding
             }
         }
     }

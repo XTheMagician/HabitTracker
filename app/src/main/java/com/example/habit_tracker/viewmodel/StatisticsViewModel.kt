@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Year
@@ -86,6 +87,12 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val _showHabitFrequency = MutableStateFlow(false)
     val showHabitFrequency: StateFlow<Boolean> = _showHabitFrequency.asStateFlow()
 
+    private val _yearInPixelsData = MutableStateFlow<Map<LocalDate, Mood>>(emptyMap())
+    val yearInPixelsData: StateFlow<Map<LocalDate, Mood>> = _yearInPixelsData.asStateFlow()
+
+    private val _isYearInPixelsLoading = MutableStateFlow(true)
+    val isYearInPixelsLoading: StateFlow<Boolean> = _isYearInPixelsLoading.asStateFlow()
+
     // --- Mappings & Formatters ---
     private val moodToValueMap = mapOf(
         Mood.VERY_BAD to 0f,
@@ -140,6 +147,15 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                     // Trigger specific loading functions with calculated dates
                     loadMoodData(mode, startDate, endDate)
                     loadHabitFrequencyData(startDate, endDate)
+
+                    if (mode == StatisticsMode.YEARLY) {
+                        // We'll define loadYearInPixelsData next
+                        loadYearInPixelsData(year)
+                    } else {
+                        // Optional: Clear pixel data when switching away from yearly mode
+                        _yearInPixelsData.value = emptyMap()
+                        _isYearInPixelsLoading.value = false // Ensure loading is false
+                    }
                 }
         }
     }
@@ -225,6 +241,48 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
             }
         }
     }
+
+    // --- NEW FUNCTION ---
+    private fun loadYearInPixelsData(year: Year) {
+        viewModelScope.launch {
+            _isYearInPixelsLoading.value = true
+            val startDate = year.atDay(1)
+            // Ensure correct last day of year calculation
+            val endDate = year.atMonth(12).atEndOfMonth()
+            val startDateString = startDate.format(isoDateFormatter)
+            val endDateString = endDate.format(isoDateFormatter)
+
+            Log.d("StatsVM", "Fetching pixel data for $year ($startDateString to $endDateString)")
+
+            // Use the existing DAO function that gets MoodDataPoints for the range
+            entryDao.getMoodEntriesBetweenDates(startDateString, endDateString)
+                .map { moodEntries -> // Transform List<MoodDataPoint> to Map<LocalDate, Mood>
+                    Log.d("StatsVM", "Processing ${moodEntries.size} entries for pixel map")
+                    val pixelMap = mutableMapOf<LocalDate, Mood>()
+                    moodEntries.forEach { dataPoint ->
+                        try {
+                            val date = LocalDate.parse(dataPoint.date, isoDateFormatter)
+                            val mood = Mood.valueOf(dataPoint.mood)
+                            pixelMap[date] = mood // Add successfully parsed entry to map
+                        } catch (e: Exception) {
+                            Log.e("StatsVM", "Error parsing pixel data point: $dataPoint", e)
+                            // Decide how to handle errors: skip, use default, etc. Skipping for now.
+                        }
+                    }
+                    pixelMap.toMap() // Return immutable map
+                }
+                .catch { e ->
+                    Log.e("StatsVM", "Error loading year in pixels data for $year", e)
+                    emit(emptyMap()) // Emit empty map on error
+                }
+                .collectLatest { pixelMap ->
+                    Log.d("StatsVM", "Pixel map loaded with ${pixelMap.size} entries for $year")
+                    _yearInPixelsData.value = pixelMap
+                    _isYearInPixelsLoading.value = false
+                }
+        }
+    }
+    // --- END NEW FUNCTION ---
 
     // --- Private Reusable Processing Functions (Unchanged from previous version) ---
 
