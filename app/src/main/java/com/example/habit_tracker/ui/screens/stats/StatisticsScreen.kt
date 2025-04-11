@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -27,6 +25,7 @@ import androidx.navigation.NavController
 import com.example.habit_tracker.ui.components.BottomNavigationBar
 import com.example.habit_tracker.ui.components.HabitFrequencyCard
 import com.example.habit_tracker.ui.components.MoodChartCard
+import com.example.habit_tracker.ui.components.MoodDistributionChartCard
 import com.example.habit_tracker.ui.components.MoodLineChartCard
 import com.example.habit_tracker.ui.components.YearSwitcher
 import com.example.habit_tracker.ui.screens.home.MonthSwitcher
@@ -45,38 +44,37 @@ fun StatisticsScreen(
     val currentMode by statisticsViewModel.statisticsMode.collectAsStateWithLifecycle()
     val currentYearMonth by statisticsViewModel.currentYearMonth.collectAsStateWithLifecycle()
     val currentYear by statisticsViewModel.currentYear.collectAsStateWithLifecycle()
-    // Collect showMoodChart flag to conditionally display charts
     val showMoodCharts by statisticsViewModel.showMoodChart.collectAsStateWithLifecycle()
-    // Collect mood summary data (optional, for display if needed)
     val moodSummary by statisticsViewModel.moodSummaryData.collectAsStateWithLifecycle()
+    val isMoodLoading by statisticsViewModel.isMoodLoading.collectAsStateWithLifecycle() // Needed for new card
 
-    // --- Formatter for MonthSwitcher ---
     val monthYearFormatter = remember(Locale.getDefault()) {
         DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())
     }
 
     Scaffold(
+        // Removed TopAppBar
         bottomBar = { BottomNavigationBar(navController) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize() // Use full size for the main column
+                .fillMaxSize()
         ) {
             // --- Mode Selector Tabs ---
             StatisticsModeTabs(
                 selectedMode = currentMode,
-                onModeSelected = { statisticsViewModel.setMode(it) } // Call VM function on tab click
+                onModeSelected = { statisticsViewModel.setMode(it) }
             )
 
             // --- Scrollable Content Area ---
             Column(
                 modifier = Modifier
-                    .weight(1f) // Allow this column to take remaining space
-                    .verticalScroll(rememberScrollState()) // Make this inner column scrollable
-                    .padding(horizontal = 16.dp) // Apply padding to the content area
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
             ) {
-                Spacer(modifier = Modifier.height(8.dp)) // Space below tabs
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // --- Conditional Time Period Switcher ---
                 when (currentMode) {
@@ -84,7 +82,6 @@ fun StatisticsScreen(
                         MonthSwitcher(
                             currentMonth = currentYearMonth,
                             monthYearFormatter = monthYearFormatter,
-                            // Use the correct ViewModel functions
                             onPreviousMonth = statisticsViewModel::showPreviousTimePeriod,
                             onNextMonth = statisticsViewModel::showNextTimePeriod,
                             modifier = Modifier.padding(vertical = 8.dp)
@@ -94,7 +91,6 @@ fun StatisticsScreen(
                     StatisticsMode.YEARLY -> {
                         YearSwitcher(
                             currentYear = currentYear,
-                            // Use the correct ViewModel functions
                             onPreviousYear = statisticsViewModel::showPreviousTimePeriod,
                             onNextYear = statisticsViewModel::showNextTimePeriod,
                             modifier = Modifier.padding(vertical = 8.dp)
@@ -102,47 +98,31 @@ fun StatisticsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp)) // Space below switcher
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // --- Statistics Cards ---
 
-                // Conditionally display Mood Charts only if in Monthly mode AND flag is true
+                // Conditionally display Mood Line/Column Charts only in Monthly mode
                 if (currentMode == StatisticsMode.MONTHLY && showMoodCharts) {
                     MoodChartCard(viewModel = statisticsViewModel)
                     MoodLineChartCard(viewModel = statisticsViewModel)
-                    Spacer(modifier = Modifier.height(8.dp)) // Add space after charts if they are shown
-                }
-
-                // Optional: Display Mood Summary (useful for Yearly view)
-                // You might want to create a dedicated MoodSummaryCard composable
-                if (moodSummary != null && currentMode == StatisticsMode.YEARLY) { // Example: Show only in yearly
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                "Yearly Mood Summary",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text("Average Score: ${moodSummary?.averageScore?.let { "%.1f".format(it) } ?: "N/A"}")
-                            Spacer(Modifier.height(4.dp))
-                            Text("Distribution:")
-                            moodSummary?.distribution?.forEach { (mood, count) ->
-                                Text("- ${mood.name}: $count")
-                            }
-                        }
-                    }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
+                // *** Use MoodDistributionChartCard in Yearly mode ***
+                if (currentMode == StatisticsMode.YEARLY) {
+                    MoodDistributionChartCard(
+                        title = "Yearly Mood Distribution",
+                        // Pass the distribution map from the summary object
+                        moodDistribution = moodSummary?.distribution,
+                        isLoading = isMoodLoading // Use the mood loading flag
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                // *** End MoodDistributionChartCard usage ***
 
-                // Habit Frequency Card - Reusable for both modes
+                // Habit Frequency Card (Works for both modes)
                 HabitFrequencyCard(viewModel = statisticsViewModel)
-
-                // Add future statistic cards here...
 
                 Spacer(modifier = Modifier.height(16.dp)) // Bottom padding
             }
@@ -151,31 +131,29 @@ fun StatisticsScreen(
 }
 
 
-// --- Separate Composable for Mode Tabs ---
+// --- StatisticsModeTabs Composable (private) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatisticsModeTabs( // Make private if only used here
+private fun StatisticsModeTabs(
     selectedMode: StatisticsMode,
     onModeSelected: (StatisticsMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val modes = StatisticsMode.values()
-    // Use PrimaryTabRow for Material 3 styling
     PrimaryTabRow(
-        selectedTabIndex = selectedMode.ordinal, // Use enum ordinal for index
-        modifier = modifier.fillMaxWidth() // Take full width
+        selectedTabIndex = selectedMode.ordinal,
+        modifier = modifier.fillMaxWidth()
     ) {
         modes.forEachIndexed { index, mode ->
             Tab(
-                selected = selectedMode == mode, // Check for equality
-                onClick = { onModeSelected(mode) }, // Trigger callback
+                selected = selectedMode == mode,
+                onClick = { onModeSelected(mode) },
                 text = {
                     Text(
-                        // Capitalize the mode name for display
                         text = mode.name.lowercase()
                             .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-                        maxLines = 1, // Prevent wrapping
-                        overflow = TextOverflow.Ellipsis // Handle long text if necessary
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             )
