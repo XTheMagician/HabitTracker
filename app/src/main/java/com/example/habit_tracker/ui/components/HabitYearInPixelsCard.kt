@@ -46,21 +46,25 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
-// --- Define colors for habit status ---
-// Consider moving these to your Theme or a constants file
-val HabitDoneColor = Color(0xFF4CAF50)      // Example: Green
 val HabitNotDoneColor = Color(0xFFF44336)   // Example: Red
-val HabitNoEntryColor = Color.LightGray.copy(alpha = 0.5f) // Same as mood no entry
+val HabitNoEntryColor = Color.LightGray.copy(alpha = 0.5f)
+
+val HabitDoneBinaryColor = Color(0xFF4CAF50)   // Example: Green (for binary)
+val HabitDoneScaleLowColor = Color(0xFFFFA000)  // Example: Orange (for scale 1) - Adjust as needed
+val HabitDoneScaleMediumColor = Color(0xFFCDDC39) // Example: Lime (for scale 2) - Adjust as needed
+val HabitDoneScaleHighColor = Color(0xFF388E3C)
 
 fun getColorForHabitStatus(status: HabitCompletionStatus?): Color {
     return when (status) {
-        HabitCompletionStatus.DONE -> HabitDoneColor
+        HabitCompletionStatus.DONE_BINARY -> HabitDoneBinaryColor
+        HabitCompletionStatus.DONE_SCALE_LOW -> HabitDoneScaleLowColor
+        HabitCompletionStatus.DONE_SCALE_MEDIUM -> HabitDoneScaleMediumColor
+        HabitCompletionStatus.DONE_SCALE_HIGH -> HabitDoneScaleHighColor
         HabitCompletionStatus.NOT_DONE -> HabitNotDoneColor
         HabitCompletionStatus.NO_ENTRY -> HabitNoEntryColor
-        null -> HabitNoEntryColor // Treat null status (shouldn't happen with current VM logic) as no entry
+        null -> HabitNoEntryColor // Default fallback
     }
 }
-// --- End Colors ---
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

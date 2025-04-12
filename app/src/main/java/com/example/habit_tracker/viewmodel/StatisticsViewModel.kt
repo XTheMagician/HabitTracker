@@ -35,19 +35,20 @@ enum class StatisticsMode {
 }
 
 enum class HabitCompletionStatus {
-    DONE, // Habit was explicitly marked done (progress entry exists)
-    NOT_DONE, // An entry exists for the day, but no progress for THIS habit
-    NO_ENTRY // No entry exists for this day at all
+    DONE_BINARY,       // Binary habit was completed
+    DONE_SCALE_LOW,    // Scale habit value 1
+    DONE_SCALE_MEDIUM, // Scale habit value 2
+    DONE_SCALE_HIGH,   // Scale habit value 3
+    NOT_DONE,          // Entry exists, but this habit wasn't done
+    NO_ENTRY           // No entry exists for the day
 }
 
-// Data class for Habit Frequency result
 data class HabitFrequencyStat(
     val name: String,
     val count: Int,
     val iconName: String
 )
 
-// Data class for Mood Summary result
 data class MoodSummary(
     val averageScore: Float?,
     val distribution: Map<Mood, Int>
@@ -336,22 +337,23 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // --- REPLACE existing loadHabitPixelData with this ---
     private fun loadHabitPixelData(year: Year, habitId: Int) {
         viewModelScope.launch {
             _isHabitPixelLoading.value = true
             val startDate: LocalDate = year.atDay(1)
-            // --- Use the correct endDate calculation from loadYearInPixelsData ---
             val endDate: LocalDate = year.atMonth(12).atEndOfMonth()
-            // --- End Corrected Calculation ---
             val startDateString = startDate.format(isoDateFormatter)
             val endDateString = endDate.format(isoDateFormatter)
 
             Log.d("StatsVM", "Fetching habit pixel data for $year, Habit ID: $habitId")
 
+            // Combine all necessary flows: All Habits, Entry Dates, Progress for the specific habit
             combine(
-                // Flow 1: Set of LocalDates for which any entry exists
-                entryDao.getMoodEntriesBetweenDates(startDateString, endDateString)
+                habitDao.getAllHabits(), // Need all habits to find the selected one's type
+                entryDao.getMoodEntriesBetweenDates(
+                    startDateString,
+                    endDateString
+                ) // Still using this to get existing entry dates
                     .map { entries ->
                         entries.mapNotNull { dataPoint ->
                             try {
@@ -361,48 +363,69 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                             }
                         }.toSet()
                     },
-                // Flow 2: Map of LocalDate to HabitProgressEntity for the specific habit
-                progressDao.getAllProgressBetweenDates(startDateString, endDateString)
-                    .map { allProgress ->
+                progressDao.getAllProgressBetweenDates(
+                    startDateString,
+                    endDateString
+                ) // Get all progress...
+                    .map { allProgress -> // ...then filter and map to Date->Progress for the selected habit
                         allProgress
                             .filter { it.habitId == habitId }
                             .mapNotNull { progressEntry ->
                                 try {
                                     val date =
                                         LocalDate.parse(progressEntry.entryDate, isoDateFormatter)
-                                    date to progressEntry
+                                    date to progressEntry // Pair<LocalDate, HabitProgressEntity>
                                 } catch (e: Exception) {
                                     null
                                 }
                             }
                             .toMap()
                     }
-            ) { entryDatesSet: Set<LocalDate>, habitProgressMap: Map<LocalDate, HabitProgressEntity> ->
+            ) { allHabitsList, entryDatesSet, habitProgressMap -> // Receive all 3 results
+                // Find the selected habit's details (needed for type)
+                val selectedHabitEntity = allHabitsList.find { it.id == habitId }
 
                 Log.d(
                     "StatsVM",
-                    "Processing habit pixels: ${entryDatesSet.size} entry dates, ${habitProgressMap.size} progress entries for habit $habitId"
+                    "Processing habit pixels: ${entryDatesSet.size} entry dates, ${habitProgressMap.size} progress entries for habit $habitId (${selectedHabitEntity?.name})"
                 )
 
                 val pixelMap = mutableMapOf<LocalDate, HabitCompletionStatus>()
                 var currentDate: LocalDate = startDate
 
                 while (!currentDate.isAfter(endDate)) {
-                    val status = when {
+                    val status: HabitCompletionStatus = when {
+                        // Check if any entry exists for the day
                         entryDatesSet.contains(currentDate) -> {
-                            if (habitProgressMap.containsKey(currentDate)) {
-                                HabitCompletionStatus.DONE
+                            // Check if progress exists for THIS habit on this day
+                            val progressEntry = habitProgressMap[currentDate]
+                            if (progressEntry != null) {
+                                // --- Logic for DONE state ---
+                                if (selectedHabitEntity?.type == com.example.habit_tracker.model.HabitType.SCALE) {
+                                    // It's a scale habit, check the value
+                                    when (progressEntry.value) {
+                                        1 -> HabitCompletionStatus.DONE_SCALE_LOW
+                                        2 -> HabitCompletionStatus.DONE_SCALE_MEDIUM
+                                        3 -> HabitCompletionStatus.DONE_SCALE_HIGH
+                                        else -> HabitCompletionStatus.DONE_BINARY // Fallback for unexpected scale value or null
+                                    }
+                                } else {
+                                    // It's a binary habit (or type unknown)
+                                    HabitCompletionStatus.DONE_BINARY
+                                }
+                                // --- End Logic for DONE state ---
                             } else {
+                                // Entry exists, but no progress for this habit
                                 HabitCompletionStatus.NOT_DONE
                             }
                         }
-
+                        // No entry exists for this day at all
                         else -> HabitCompletionStatus.NO_ENTRY
                     }
                     pixelMap[currentDate] = status
                     currentDate = currentDate.plusDays(1)
                 }
-                pixelMap.toMap()
+                pixelMap.toMap() // Return immutable map
             }
                 .catch { e ->
                     Log.e(
@@ -422,7 +445,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                 }
         }
     }
-    // --- END REPLACEMENT ---
 
     private fun processMoodChartData(moodEntries: List<MoodDataPoint>): List<Pair<Float, Float>> {
         return moodEntries.mapIndexedNotNull { index, dataPoint ->

@@ -14,204 +14,141 @@ import kotlinx.coroutines.launch
 
 object DefaultHabits {
     val list = listOf(
+        // Freetime
         HabitEntity(
             name = "Read",
-            iconName = "menu_book",
+            iconName = "menu_book", // Or "auto_stories"
             category = "Freetime",
             type = HabitType.BINARY
         ),
         HabitEntity(
-            name = "Paint or Draw",
-            iconName = "palette",
+            name = "Gaming",
+            iconName = "sports_esports", // Or "stadia_controller"
+            category = "Freetime",
+            type = HabitType.SCALE // Scalable as requested
+        ),
+        HabitEntity(
+            name = "Movie",
+            iconName = "movie", // Or "theaters"
             category = "Freetime",
             type = HabitType.BINARY
         ),
         HabitEntity(
-            name = "Play Instrument",
-            iconName = "music_note",
+            name = "Datenight",
+            iconName = "favorite", // Or "restaurant", "local_bar"
             category = "Freetime",
             type = HabitType.BINARY
         ),
         HabitEntity(
-            name = "Read News",
-            iconName = "article",
+            name = "Trip",
+            iconName = "explore", // Or "flight_takeoff", "directions_car"
             category = "Freetime",
             type = HabitType.BINARY
         ),
+
+        // Household
         HabitEntity(
-            name = "Go Outside",
-            iconName = "park",
-            category = "Freetime",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Listen to Music",
-            iconName = "headphones",
-            category = "Freetime",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Movie Night",
-            iconName = "movie",
-            category = "Freetime",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Relax",
-            iconName = "self_improvement",
-            category = "Freetime",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Workout",
-            iconName = "fitness_center",
-            category = "Health",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Walk",
-            iconName = "directions_walk",
-            category = "Health",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Drink Water",
-            iconName = "water_drop",
-            category = "Health",
-            type = HabitType.SCALE
-        ),
-        HabitEntity(
-            name = "Sleep Early",
-            iconName = "bedtime",
-            category = "Health",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Meditation",
-            iconName = "sentiment_calm",
-            category = "Health",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Write Journal",
-            iconName = "edit_note",
-            category = "Mindfulness",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Study",
-            iconName = "school",
-            category = "Work",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Plan Day",
-            iconName = "event",
-            category = "Work",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Practice Language",
-            iconName = "translate",
-            category = "Work",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Computer Work",
-            iconName = "computer",
-            category = "Work",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Clean Room",
-            iconName = "cleaning_services",
-            category = "Household",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Grocery Shopping",
+            name = "Groceries",
             iconName = "shopping_cart",
             category = "Household",
             type = HabitType.BINARY
         ),
         HabitEntity(
-            name = "Call Family",
-            iconName = "call",
+            name = "Cook",
+            iconName = "soup_kitchen", // Or "restaurant_menu", "outdoor_grill"
+            category = "Household",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Wash Clothes",
+            iconName = "local_laundry_service",
+            category = "Household",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Clean Flat",
+            iconName = "cleaning_services",
+            category = "Household",
+            type = HabitType.BINARY
+        ),
+
+        // Work
+        HabitEntity(
+            name = "Study",
+            iconName = "school", // Or "menu_book"
+            category = "Work",
+            type = HabitType.SCALE // Scalable as requested
+        ),
+        HabitEntity(
+            name = "Take a Break",
+            iconName = "free_breakfast", // Or "self_improvement", "coffee"
+            category = "Work",
+            type = HabitType.SCALE // Scalable as requested
+        ),
+
+        // Health
+        HabitEntity(
+            name = "Sleep",
+            iconName = "bed", // Or "bedtime", "hotel"
+            category = "Health",
+            type = HabitType.SCALE // Scalable (duration) as requested
+        ),
+        HabitEntity(
+            name = "Sleep Quality",
+            iconName = "star", // Or "sentiment_satisfied", "thumb_up"
+            category = "Health",
+            type = HabitType.SCALE // Scalable (rating 1-5?) as requested
+        ),
+        HabitEntity(
+            name = "Sport",
+            iconName = "fitness_center", // Or "directions_run", "sports_soccer"
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Eat Healthy",
+            iconName = "nutrition", // Or "restaurant", "local_florist" (looks like veg)
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Eat Veggie",
+            iconName = "eco", // Or "grass"
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Wake Up Early",
+            iconName = "wb_sunny", // Or "alarm"
+            category = "Health",
+            type = HabitType.BINARY
+        ),
+        HabitEntity(
+            name = "Drink Alcohol",
+            iconName = "local_bar", // Or "wine_bar", "no_drinks" (if tracking avoidance)
+            category = "Health",
+            type = HabitType.BINARY // Track if *any* alcohol was consumed? Or change to SCALE for quantity?
+        ),
+
+        // Social
+        HabitEntity(
+            name = "Party",
+            iconName = "celebration", // Or "liquor"
             category = "Social",
             type = HabitType.BINARY
         ),
         HabitEntity(
-            name = "Write Message",
-            iconName = "chat",
-            category = "Social",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Meet Friend",
+            name = "See Friends",
             iconName = "group",
             category = "Social",
             type = HabitType.BINARY
         ),
         HabitEntity(
-            name = "Eat Breakfast",
-            iconName = "bakery_dining",
-            category = "Routine",
+            name = "See Family",
+            iconName = "people", // Or "family_restroom", "escalator_warning"
+            category = "Social",
             type = HabitType.BINARY
         ),
-        HabitEntity(
-            name = "Eat Lunch",
-            iconName = "lunch_dining",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Eat Dinner",
-            iconName = "dinner_dining",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Brush Teeth",
-            iconName = "brush",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Drink Coffee",
-            iconName = "local_cafe",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Wake Up",
-            iconName = "wb_sunny",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Go to Sleep",
-            iconName = "bedtime",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Set Alarm",
-            iconName = "alarm",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Power Nap",
-            iconName = "airline_seat_individual_suite",
-            category = "Routine",
-            type = HabitType.BINARY
-        ),
-        HabitEntity(
-            name = "Walk the Dog",
-            iconName = "pets",
-            category = "Pets",
-            type = HabitType.BINARY
-        )
     )
 }
 
