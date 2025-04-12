@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,13 +31,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -447,44 +446,53 @@ fun HabitButton(
     val context = LocalContext.current
     LaunchedEffect(Unit) { MaterialSymbolsRepository.preload(context) }
 
-    val bgColor =
-        if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)
-    val contentColor =
-        if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    // Define colors for selected/unselected states
+    // - Container: Background of the IconButton
+    // - Content: Color of the icon Text inside
+    val selectedContainerColor =
+        MaterialTheme.colorScheme.primary // Or primaryContainer for a less intense bg
+    val unselectedContainerColor = Color.Transparent // No background when not selected
+    val selectedContentColor = MaterialTheme.colorScheme.onPrimary // Icon color on primary bg
+    val unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant // Default icon color
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .padding(4.dp)
+        modifier = Modifier.padding(vertical = 4.dp) // Padding around Icon+Text column
     ) {
-        Surface(
-            shape = CircleShape,
-            color = bgColor,
-            modifier = Modifier.size(56.dp),
-            tonalElevation = if (selected) 2.dp else 1.dp,
-            shadowElevation = if (selected) 4.dp else 2.dp
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(56.dp) // Maintain touch area size
+                .combinedClickable( // Keep long click capability
+                    onClick = onClick, // Redundant with IconButton's onClick, but needed for combinedClickable lambda
+                    onLongClick = onLongClick
+                ),
+            // *** USE IconButtonDefaults TO CONTROL COLORS ***
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = if (selected) selectedContainerColor else unselectedContainerColor,
+                contentColor = if (selected) selectedContentColor else unselectedContentColor
+            )
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(
-                    habit.iconKey,
-                    fallbackSymbolName = "question_mark"
-                )
-                Text(
-                    text = symbolChar,
-                    fontFamily = MaterialSymbols,
-                    fontSize = 32.sp,
-                    color = contentColor
-                )
-            }
+            // Icon Text - color is now controlled by IconButton's `contentColor`
+            val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(
+                habit.iconKey,
+                fallbackSymbolName = "question_mark"
+            )
+            Text(
+                text = symbolChar,
+                fontFamily = MaterialSymbols,
+                fontSize = 32.sp // Adjust if needed
+                // No explicit .color modifier here anymore!
+            )
         }
+
         Spacer(modifier = Modifier.height(4.dp))
-        Text(habit.name, fontSize = 12.sp)
+
+        Text(
+            text = habit.name,
+            fontSize = 12.sp
+            // Optional: Change text color based on selection too
+            // color = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current
+        )
     }
 }
