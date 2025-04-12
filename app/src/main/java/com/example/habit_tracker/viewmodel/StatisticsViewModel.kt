@@ -14,6 +14,7 @@ import com.example.habit_tracker.data.db.MoodDataPoint
 import com.example.habit_tracker.model.Mood
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Year
@@ -30,6 +32,12 @@ import java.time.format.DateTimeFormatter
 // Enum for Mode
 enum class StatisticsMode {
     MONTHLY, YEARLY
+}
+
+enum class HabitCompletionStatus {
+    DONE, // Habit was explicitly marked done (progress entry exists)
+    NOT_DONE, // An entry exists for the day, but no progress for THIS habit
+    NO_ENTRY // No entry exists for this day at all
 }
 
 // Data class for Habit Frequency result
@@ -93,7 +101,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val _isYearInPixelsLoading = MutableStateFlow(true)
     val isYearInPixelsLoading: StateFlow<Boolean> = _isYearInPixelsLoading.asStateFlow()
 
-    // --- Mappings & Formatters ---
     private val moodToValueMap = mapOf(
         Mood.VERY_BAD to 0f,
         Mood.BAD to 1f,
@@ -103,6 +110,30 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     )
     private val isoDateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_DATE
 
+    val allHabits: StateFlow<List<HabitEntity>> = habitDao.getAllHabits()
+        .catch { e ->
+            Log.e("StatsVM", "Error loading all habits", e)
+            emit(emptyList()) // Emit empty list on error
+        }
+        // Convert Flow to StateFlow, share subscription
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Holds the ID of the habit selected by the user for the pixel view
+    private val _selectedHabitIdForPixels =
+        MutableStateFlow<Int?>(null) // Start with no habit selected
+    val selectedHabitIdForPixels: StateFlow<Int?> = _selectedHabitIdForPixels.asStateFlow()
+
+    // Holds the calculated pixel data for the selected habit and year
+    private val _habitPixelData =
+        MutableStateFlow<Map<LocalDate, HabitCompletionStatus>>(emptyMap())
+    val habitPixelData: StateFlow<Map<LocalDate, HabitCompletionStatus>> =
+        _habitPixelData.asStateFlow()
+
+    // Loading state specifically for the habit pixel data
+    private val _isHabitPixelLoading = MutableStateFlow(false) // Start as false until triggered
+    val isHabitPixelLoading: StateFlow<Boolean> = _isHabitPixelLoading.asStateFlow()
+
+
     // --- Initialization ---
     init {
         observeTimeRangeChangesAndLoadData()
@@ -111,6 +142,16 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     // --- Public Control Functions ---
     fun setMode(mode: StatisticsMode) {
         _statisticsMode.value = mode
+    }
+
+    fun selectHabitForPixels(habitId: Int?) {
+        Log.d("StatsVM", "Habit selected for pixel view: $habitId")
+        _selectedHabitIdForPixels.value = habitId
+        if (habitId == null) {
+            // Clear data if habit is deselected
+            _habitPixelData.value = emptyMap()
+            _isHabitPixelLoading.value = false
+        }
     }
 
     fun showPreviousTimePeriod() {
@@ -131,36 +172,51 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // --- Reactive Data Loading Trigger ---
     private fun observeTimeRangeChangesAndLoadData() {
         viewModelScope.launch {
-            combine(statisticsMode, currentYearMonth, currentYear) { mode, month, year ->
-                Triple(mode, month, year)
+            // Combine all state that influences data loading
+            combine(
+                statisticsMode,
+                currentYearMonth,
+                currentYear,
+                selectedHabitIdForPixels // *** Add selected habit ID ***
+            ) { mode, month, year, selectedHabitId ->
+                Quadruple(mode, month, year, selectedHabitId)
             }.distinctUntilChanged()
-                .collectLatest { (mode, month, year) ->
+                .collectLatest { (mode, month, year, selectedHabitId) -> // Destructure
                     Log.d(
                         "StatsVM",
-                        "Reloading data for Mode: $mode, Time: ${if (mode == StatisticsMode.MONTHLY) month else year}"
+                        "Reloading data for Mode: $mode, Time: ${if (mode == StatisticsMode.MONTHLY) month else year}, Selected Habit: $selectedHabitId"
                     )
-                    // Calculate date range based on mode
                     val (startDate, endDate) = calculateDateRange(mode, month, year)
-                    // Trigger specific loading functions with calculated dates
+
+                    // Keep existing calls
                     loadMoodData(mode, startDate, endDate)
                     loadHabitFrequencyData(startDate, endDate)
 
+                    // Load Mood pixels if in yearly mode
                     if (mode == StatisticsMode.YEARLY) {
-                        // We'll define loadYearInPixelsData next
-                        loadYearInPixelsData(year)
+                        loadYearInPixelsData(year) // Keep this call
+                        // *** Trigger habit pixel loading if a habit is selected ***
+                        if (selectedHabitId != null) {
+                            // We will define loadHabitPixelData next
+                            loadHabitPixelData(year, selectedHabitId)
+                        } else {
+                            // No habit selected, clear data and set loading false
+                            _habitPixelData.value = emptyMap()
+                            _isHabitPixelLoading.value = false
+                        }
                     } else {
-                        // Optional: Clear pixel data when switching away from yearly mode
+                        // Clear yearly pixel data when switching away from yearly mode
                         _yearInPixelsData.value = emptyMap()
-                        _isYearInPixelsLoading.value = false // Ensure loading is false
+                        _isYearInPixelsLoading.value = false
+                        _habitPixelData.value = emptyMap()
+                        _isHabitPixelLoading.value = false
                     }
                 }
         }
     }
 
-    // --- Date Range Calculation ---
     private fun calculateDateRange(
         mode: StatisticsMode,
         month: YearMonth,
@@ -171,8 +227,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
             StatisticsMode.YEARLY -> Pair(year.atDay(1), year.atMonth(12).atEndOfMonth())
         }
     }
-
-    // --- Private Data Loading & Processing Functions ---
 
     // Loads and processes mood data for the given date range
     private fun loadMoodData(mode: StatisticsMode, startDate: LocalDate, endDate: LocalDate) {
@@ -242,7 +296,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // --- NEW FUNCTION ---
     private fun loadYearInPixelsData(year: Year) {
         viewModelScope.launch {
             _isYearInPixelsLoading.value = true
@@ -282,9 +335,94 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                 }
         }
     }
-    // --- END NEW FUNCTION ---
 
-    // --- Private Reusable Processing Functions (Unchanged from previous version) ---
+    // --- REPLACE existing loadHabitPixelData with this ---
+    private fun loadHabitPixelData(year: Year, habitId: Int) {
+        viewModelScope.launch {
+            _isHabitPixelLoading.value = true
+            val startDate: LocalDate = year.atDay(1)
+            // --- Use the correct endDate calculation from loadYearInPixelsData ---
+            val endDate: LocalDate = year.atMonth(12).atEndOfMonth()
+            // --- End Corrected Calculation ---
+            val startDateString = startDate.format(isoDateFormatter)
+            val endDateString = endDate.format(isoDateFormatter)
+
+            Log.d("StatsVM", "Fetching habit pixel data for $year, Habit ID: $habitId")
+
+            combine(
+                // Flow 1: Set of LocalDates for which any entry exists
+                entryDao.getMoodEntriesBetweenDates(startDateString, endDateString)
+                    .map { entries ->
+                        entries.mapNotNull { dataPoint ->
+                            try {
+                                LocalDate.parse(dataPoint.date, isoDateFormatter)
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }.toSet()
+                    },
+                // Flow 2: Map of LocalDate to HabitProgressEntity for the specific habit
+                progressDao.getAllProgressBetweenDates(startDateString, endDateString)
+                    .map { allProgress ->
+                        allProgress
+                            .filter { it.habitId == habitId }
+                            .mapNotNull { progressEntry ->
+                                try {
+                                    val date =
+                                        LocalDate.parse(progressEntry.entryDate, isoDateFormatter)
+                                    date to progressEntry
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                            .toMap()
+                    }
+            ) { entryDatesSet: Set<LocalDate>, habitProgressMap: Map<LocalDate, HabitProgressEntity> ->
+
+                Log.d(
+                    "StatsVM",
+                    "Processing habit pixels: ${entryDatesSet.size} entry dates, ${habitProgressMap.size} progress entries for habit $habitId"
+                )
+
+                val pixelMap = mutableMapOf<LocalDate, HabitCompletionStatus>()
+                var currentDate: LocalDate = startDate
+
+                while (!currentDate.isAfter(endDate)) {
+                    val status = when {
+                        entryDatesSet.contains(currentDate) -> {
+                            if (habitProgressMap.containsKey(currentDate)) {
+                                HabitCompletionStatus.DONE
+                            } else {
+                                HabitCompletionStatus.NOT_DONE
+                            }
+                        }
+
+                        else -> HabitCompletionStatus.NO_ENTRY
+                    }
+                    pixelMap[currentDate] = status
+                    currentDate = currentDate.plusDays(1)
+                }
+                pixelMap.toMap()
+            }
+                .catch { e ->
+                    Log.e(
+                        "StatsVM",
+                        "Error loading habit pixel data for $year, Habit ID: $habitId",
+                        e
+                    )
+                    emit(emptyMap())
+                }
+                .collectLatest { pixelMap ->
+                    Log.d(
+                        "StatsVM",
+                        "Habit pixel map loaded with ${pixelMap.size} entries for $year, Habit ID: $habitId"
+                    )
+                    _habitPixelData.value = pixelMap
+                    _isHabitPixelLoading.value = false
+                }
+        }
+    }
+    // --- END REPLACEMENT ---
 
     private fun processMoodChartData(moodEntries: List<MoodDataPoint>): List<Pair<Float, Float>> {
         return moodEntries.mapIndexedNotNull { index, dataPoint ->
@@ -338,4 +476,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
             }
         }.sortedByDescending { it.count }
     }
+
+    data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 }

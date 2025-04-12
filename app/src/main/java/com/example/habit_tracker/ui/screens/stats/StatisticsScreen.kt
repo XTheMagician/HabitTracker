@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.habit_tracker.ui.components.BottomNavigationBar
 import com.example.habit_tracker.ui.components.HabitFrequencyCard
+import com.example.habit_tracker.ui.components.HabitYearInPixelsCard
 import com.example.habit_tracker.ui.components.MoodChartCard
 import com.example.habit_tracker.ui.components.MoodDistributionChartCard
 import com.example.habit_tracker.ui.components.MoodLineChartCard
@@ -50,13 +51,18 @@ fun StatisticsScreen(
     val isMoodLoading by statisticsViewModel.isMoodLoading.collectAsStateWithLifecycle()
     val yearPixelsData by statisticsViewModel.yearInPixelsData.collectAsStateWithLifecycle()
     val isYearPixelsLoading by statisticsViewModel.isYearInPixelsLoading.collectAsStateWithLifecycle()
+    // *** Collect Habit Pixel State ***
+    val allHabits by statisticsViewModel.allHabits.collectAsStateWithLifecycle()
+    val selectedHabitIdForPixels by statisticsViewModel.selectedHabitIdForPixels.collectAsStateWithLifecycle()
+    val habitPixelData by statisticsViewModel.habitPixelData.collectAsStateWithLifecycle()
+    val isHabitPixelLoading by statisticsViewModel.isHabitPixelLoading.collectAsStateWithLifecycle()
+    // *** End Collect ***
 
     val monthYearFormatter = remember(Locale.getDefault()) {
         DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())
     }
 
     Scaffold(
-        // Removed TopAppBar
         bottomBar = { BottomNavigationBar(navController) }
     ) { innerPadding ->
         Column(
@@ -64,13 +70,11 @@ fun StatisticsScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // --- Mode Selector Tabs ---
             StatisticsModeTabs(
                 selectedMode = currentMode,
                 onModeSelected = { statisticsViewModel.setMode(it) }
             )
 
-            // --- Scrollable Content Area ---
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -82,7 +86,7 @@ fun StatisticsScreen(
                 // --- Conditional Time Period Switcher ---
                 when (currentMode) {
                     StatisticsMode.MONTHLY -> {
-                        MonthSwitcher(
+                        MonthSwitcher( // ... parameters ...
                             currentMonth = currentYearMonth,
                             monthYearFormatter = monthYearFormatter,
                             onPreviousMonth = statisticsViewModel::showPreviousTimePeriod,
@@ -92,7 +96,7 @@ fun StatisticsScreen(
                     }
 
                     StatisticsMode.YEARLY -> {
-                        YearSwitcher(
+                        YearSwitcher( // ... parameters ...
                             currentYear = currentYear,
                             onPreviousYear = statisticsViewModel::showPreviousTimePeriod,
                             onNextYear = statisticsViewModel::showNextTimePeriod,
@@ -101,33 +105,53 @@ fun StatisticsScreen(
                     }
                 }
 
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // --- Statistics Cards ---
 
-                // Conditionally display Mood Line/Column Charts only in Monthly mode
+                // Monthly Mood Charts
                 if (currentMode == StatisticsMode.MONTHLY && showMoodCharts) {
                     MoodChartCard(viewModel = statisticsViewModel)
                     MoodLineChartCard(viewModel = statisticsViewModel)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // *** Use MoodDistributionChartCard in Yearly mode ***
+                // Yearly Cards
                 if (currentMode == StatisticsMode.YEARLY) {
+                    // Yearly Mood Distribution Chart
                     MoodDistributionChartCard(
                         title = "Yearly Mood Distribution",
-                        // Pass the distribution map from the summary object
                         moodDistribution = moodSummary?.distribution,
-                        isLoading = isMoodLoading // Use the mood loading flag
+                        isLoading = isMoodLoading
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Mood Year In Pixels Card
                     YearInPixelsCard(
-                        selectedYear = currentYear, // Pass the selected year
-                        pixelData = yearPixelsData, // Pass the map data
-                        isLoading = isYearPixelsLoading // Pass the loading state
+                        selectedYear = currentYear,
+                        pixelData = yearPixelsData,
+                        isLoading = isYearPixelsLoading
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // *** Add Habit Year In Pixels Card ***
+                    HabitYearInPixelsCard(
+                        selectedYear = currentYear,
+                        allHabits = allHabits, // Pass list of habits
+                        selectedHabitId = selectedHabitIdForPixels, // Pass selected ID
+                        habitPixelData = habitPixelData, // Pass habit pixel map
+                        isLoading = isHabitPixelLoading, // Pass loading state
+                        onHabitSelected = statisticsViewModel::selectHabitForPixels // Pass callback
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // *** End Habit Year In Pixels Card ***
                 }
+
+                // Habit Frequency Card (Works for both modes)
                 HabitFrequencyCard(viewModel = statisticsViewModel)
-                Spacer(modifier = Modifier.height(8.dp)) // Bottom padding
+
+                Spacer(modifier = Modifier.height(16.dp)) // Bottom padding
             }
         }
     }
@@ -135,30 +159,33 @@ fun StatisticsScreen(
 
 
 // --- StatisticsModeTabs Composable (private) ---
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class) // Needed for PrimaryTabRow/Tab
 @Composable
 private fun StatisticsModeTabs(
     selectedMode: StatisticsMode,
     onModeSelected: (StatisticsMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val modes = StatisticsMode.values()
+    val modes = StatisticsMode.values() // Get all enum values (MONTHLY, YEARLY)
     PrimaryTabRow(
-        selectedTabIndex = selectedMode.ordinal,
-        modifier = modifier.fillMaxWidth()
+        selectedTabIndex = selectedMode.ordinal, // Use enum ordinal (0 for MONTHLY, 1 for YEARLY)
+        modifier = modifier.fillMaxWidth() // Make the row take full width
     ) {
+        // Create a Tab for each mode in the enum
         modes.forEachIndexed { index, mode ->
             Tab(
-                selected = selectedMode == mode,
-                onClick = { onModeSelected(mode) },
+                selected = selectedMode == mode, // Highlight the tab if it's the selected mode
+                onClick = { onModeSelected(mode) }, // Call the provided lambda when clicked
                 text = {
                     Text(
+                        // Display the mode name, capitalized
                         text = mode.name.lowercase()
                             .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 1, // Prevent text wrapping
+                        overflow = TextOverflow.Ellipsis // Handle cases if text is too long
                     )
                 }
+                // You can also add icons here if desired using the 'icon = { ... }' parameter
             )
         }
     }

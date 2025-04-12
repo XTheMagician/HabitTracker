@@ -37,9 +37,10 @@ import java.util.Locale
 // --- Color definitions (Keep these or move to Theme/Constants) ---
 val VeryBadColor = Color(0xFFD32F2F)
 val BadColor = Color(0xFFFFA000)
-val NeutralColor = Color(0xFF1976D2)
-val GoodColor = Color(0xFF388E3C)
-val VeryGoodColor = Color(0xFFCDDC39)
+val NeutralColor = Color(0xFFFFEB3B)
+val GoodColor = Color(0xFFCDDC39)
+val VeryGoodColor = Color(0xFF388E3C)
+
 val NoEntryColor = Color.LightGray.copy(alpha = 0.5f)
 
 fun getColorForMood(mood: Mood?): Color {
