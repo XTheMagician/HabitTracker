@@ -34,7 +34,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.habit_tracker.data.db.HabitEntity
+import com.example.habit_tracker.ui.theme.MaterialSymbols
+import com.example.habit_tracker.utils.MaterialSymbolsRepository
 import com.example.habit_tracker.viewmodel.HabitCompletionStatus
 import java.time.LocalDate
 import java.time.Month
@@ -121,6 +124,17 @@ fun HabitYearInPixelsCard(
                     allHabits.forEach { habit ->
                         DropdownMenuItem(
                             text = { Text(habit.name) },
+                            leadingIcon = {
+                                // Use the same icon rendering technique
+                                val symbolChar =
+                                    MaterialSymbolsRepository.getSymbolCharSafe(habit.iconName)
+                                Text(
+                                    text = symbolChar,
+                                    fontFamily = MaterialSymbols, // Apply the special font
+                                    fontSize = 18.sp // Adjust size as needed for menu items
+                                    // Color will typically be inherited from DropdownMenuItem's content color
+                                )
+                            },
                             onClick = {
                                 onHabitSelected(habit.id) // Pass selected habit's ID
                                 isDropdownExpanded = false
