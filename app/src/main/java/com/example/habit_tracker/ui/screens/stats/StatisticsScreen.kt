@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.habit_tracker.ui.components.BottomNavigationBar
 import com.example.habit_tracker.ui.components.HabitFrequencyCard
+import com.example.habit_tracker.ui.components.HabitMoodCorrelationListCard
 import com.example.habit_tracker.ui.components.HabitYearInPixelsCard
 import com.example.habit_tracker.ui.components.MoodChartCard
 import com.example.habit_tracker.ui.components.MoodDistributionChartCard
@@ -56,7 +57,9 @@ fun StatisticsScreen(
     val selectedHabitIdForPixels by statisticsViewModel.selectedHabitIdForPixels.collectAsStateWithLifecycle()
     val habitPixelData by statisticsViewModel.habitPixelData.collectAsStateWithLifecycle()
     val isHabitPixelLoading by statisticsViewModel.isHabitPixelLoading.collectAsStateWithLifecycle()
-    // *** End Collect ***
+    // *** Add these lines to collect state ***
+    val allCorrelationResults by statisticsViewModel.allCorrelationResults.collectAsStateWithLifecycle()
+    val isAllCorrelationsLoading by statisticsViewModel.isAllCorrelationsLoading.collectAsStateWithLifecycle()
 
     val monthYearFormatter = remember(Locale.getDefault()) {
         DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())
@@ -96,7 +99,7 @@ fun StatisticsScreen(
                     }
 
                     StatisticsMode.YEARLY -> {
-                        YearSwitcher( // ... parameters ...
+                        YearSwitcher(
                             currentYear = currentYear,
                             onPreviousYear = statisticsViewModel::showPreviousTimePeriod,
                             onNextYear = statisticsViewModel::showNextTimePeriod,
@@ -106,15 +109,9 @@ fun StatisticsScreen(
                 }
 
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // --- Statistics Cards ---
-
-                // Monthly Mood Charts
                 if (currentMode == StatisticsMode.MONTHLY && showMoodCharts) {
                     MoodChartCard(viewModel = statisticsViewModel)
                     MoodLineChartCard(viewModel = statisticsViewModel)
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // Yearly Cards
@@ -125,7 +122,6 @@ fun StatisticsScreen(
                         moodDistribution = moodSummary?.distribution,
                         isLoading = isMoodLoading
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Mood Year In Pixels Card
                     YearInPixelsCard(
@@ -133,7 +129,6 @@ fun StatisticsScreen(
                         pixelData = yearPixelsData,
                         isLoading = isYearPixelsLoading
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
 
                     // *** Add Habit Year In Pixels Card ***
                     HabitYearInPixelsCard(
@@ -144,12 +139,12 @@ fun StatisticsScreen(
                         isLoading = isHabitPixelLoading, // Pass loading state
                         onHabitSelected = statisticsViewModel::selectHabitForPixels // Pass callback
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // *** End Habit Year In Pixels Card ***
                 }
 
-                // Habit Frequency Card (Works for both modes)
                 HabitFrequencyCard(viewModel = statisticsViewModel)
+                HabitMoodCorrelationListCard(
+                    viewModel = statisticsViewModel
+                )
 
                 Spacer(modifier = Modifier.height(16.dp)) // Bottom padding
             }

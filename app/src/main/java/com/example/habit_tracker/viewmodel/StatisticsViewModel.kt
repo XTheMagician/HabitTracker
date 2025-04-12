@@ -11,6 +11,7 @@ import com.example.habit_tracker.data.db.HabitEntryDao
 import com.example.habit_tracker.data.db.HabitProgressDao
 import com.example.habit_tracker.data.db.HabitProgressEntity
 import com.example.habit_tracker.data.db.MoodDataPoint
+import com.example.habit_tracker.model.HabitType
 import com.example.habit_tracker.model.Mood
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,10 +25,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.apache.commons.math3.linear.MatrixUtils
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
+import org.apache.commons.math3.stat.correlation.SpearmansCorrelation
+import org.apache.commons.math3.stat.ranking.NaNStrategy
+import org.apache.commons.math3.stat.ranking.NaturalRanking
+import org.apache.commons.math3.stat.ranking.TiesStrategy
 import java.time.LocalDate
 import java.time.Year
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 
 // Enum for Mode
 enum class StatisticsMode {
@@ -52,6 +60,15 @@ data class HabitFrequencyStat(
 data class MoodSummary(
     val averageScore: Float?,
     val distribution: Map<Mood, Int>
+)
+
+data class HabitCorrelationResult(
+    val habitId: Int,
+    val habitName: String,
+    val habitIconName: String,
+    val coefficient: Double?, // Spearman's Rho
+    val pValue: Double?,
+    val dataPointCount: Int
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -101,6 +118,13 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _isYearInPixelsLoading = MutableStateFlow(true)
     val isYearInPixelsLoading: StateFlow<Boolean> = _isYearInPixelsLoading.asStateFlow()
+
+    private val _allCorrelationResults = MutableStateFlow<List<HabitCorrelationResult>>(emptyList())
+    val allCorrelationResults: StateFlow<List<HabitCorrelationResult>> =
+        _allCorrelationResults.asStateFlow()
+
+    private val _isAllCorrelationsLoading = MutableStateFlow(false) // Loading flag for the list
+    val isAllCorrelationsLoading: StateFlow<Boolean> = _isAllCorrelationsLoading.asStateFlow()
 
     private val moodToValueMap = mapOf(
         Mood.VERY_BAD to 0f,
@@ -175,45 +199,46 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun observeTimeRangeChangesAndLoadData() {
         viewModelScope.launch {
-            // Combine all state that influences data loading
+            // Combine only the state needed to trigger general reloads
             combine(
                 statisticsMode,
                 currentYearMonth,
-                currentYear,
-                selectedHabitIdForPixels // *** Add selected habit ID ***
-            ) { mode, month, year, selectedHabitId ->
-                Quadruple(mode, month, year, selectedHabitId)
+                currentYear
+                // Selected Habit for Pixels is handled separately via its select function now
+            ) { mode, month, year ->
+                Triple(mode, month, year) // Pass mode and time range triggers
             }.distinctUntilChanged()
-                .collectLatest { (mode, month, year, selectedHabitId) -> // Destructure
+                .collectLatest { (mode, month, year) ->
                     Log.d(
                         "StatsVM",
-                        "Reloading data for Mode: $mode, Time: ${if (mode == StatisticsMode.MONTHLY) month else year}, Selected Habit: $selectedHabitId"
+                        "Mode/Time Changed: Mode: $mode, Time: ${if (mode == StatisticsMode.MONTHLY) month else year}"
                     )
                     val (startDate, endDate) = calculateDateRange(mode, month, year)
 
-                    // Keep existing calls
+                    // Load base data needed by multiple stats
                     loadMoodData(mode, startDate, endDate)
                     loadHabitFrequencyData(startDate, endDate)
 
-                    // Load Mood pixels if in yearly mode
+                    // Load yearly-specific data
                     if (mode == StatisticsMode.YEARLY) {
-                        loadYearInPixelsData(year) // Keep this call
-                        // *** Trigger habit pixel loading if a habit is selected ***
-                        if (selectedHabitId != null) {
-                            // We will define loadHabitPixelData next
-                            loadHabitPixelData(year, selectedHabitId)
+                        loadYearInPixelsData(year) // Mood pixels
+                        // Trigger habit pixel loading only if a habit IS selected for pixels
+                        // This check should ideally live closer to the selectHabitForPixels logic,
+                        // but we keep it here for now based on previous structure.
+                        // Re-evaluate if needed.
+                        if (_selectedHabitIdForPixels.value != null) {
+                            loadHabitPixelData(year, _selectedHabitIdForPixels.value!!)
                         } else {
-                            // No habit selected, clear data and set loading false
-                            _habitPixelData.value = emptyMap()
-                            _isHabitPixelLoading.value = false
+                            _habitPixelData.value = emptyMap(); _isHabitPixelLoading.value = false
                         }
                     } else {
-                        // Clear yearly pixel data when switching away from yearly mode
-                        _yearInPixelsData.value = emptyMap()
-                        _isYearInPixelsLoading.value = false
-                        _habitPixelData.value = emptyMap()
-                        _isHabitPixelLoading.value = false
+                        // Clear yearly data when not in yearly mode
+                        _yearInPixelsData.value = emptyMap(); _isYearInPixelsLoading.value = false
+                        _habitPixelData.value = emptyMap(); _isHabitPixelLoading.value = false
                     }
+
+                    // *** Trigger loading for ALL correlations ***
+                    loadAllCorrelations(startDate, endDate) // Pass calculated date range
                 }
         }
     }
@@ -497,6 +522,226 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                 null
             }
         }.sortedByDescending { it.count }
+    }
+
+    // --- Complete loadAllCorrelations function ---
+    private fun loadAllCorrelations(startDate: LocalDate, endDate: LocalDate) {
+        viewModelScope.launch {
+            _isAllCorrelationsLoading.value = true
+            _allCorrelationResults.value = emptyList() // Clear previous results
+
+            val startDateString = startDate.format(isoDateFormatter)
+            val endDateString = endDate.format(isoDateFormatter)
+
+            Log.d("StatsVM", "Fetching data for all correlations: $startDate - $endDate")
+
+            // Combine flows needed: All Habits, Mood entries, ALL Progress entries
+            combine(
+                habitDao.getAllHabits(), // Flow<List<HabitEntity>>
+                entryDao.getMoodEntriesBetweenDates(
+                    startDateString,
+                    endDateString
+                ), // Flow<List<MoodDataPoint>>
+                progressDao.getAllProgressBetweenDates(
+                    startDateString,
+                    endDateString
+                ) // Flow<List<HabitProgressEntity>> - Get ALL progress
+            ) { allHabitsList, moodDataList, allProgressList -> // Receive all 3 results
+
+                Log.d(
+                    "StatsVM",
+                    "Processing all correlations: ${allHabitsList.size} habits, ${moodDataList.size} moods, ${allProgressList.size} progress entries"
+                )
+
+                // Pre-process data for efficiency
+                val moodMap = moodDataList.associate {
+                    try {
+                        LocalDate.parse(it.date) to Mood.valueOf(it.mood)
+                    } catch (e: Exception) {
+                        null to null
+                    }
+                }.filterKeys { it != null } as Map<LocalDate, Mood>
+
+                val progressByHabitId = allProgressList.groupBy { it.habitId }
+                // --- End Pre-processing ---
+
+
+                val correlationResults = mutableListOf<HabitCorrelationResult>()
+
+                // Iterate through each habit defined in the app
+                allHabitsList.forEach { habit ->
+                    val habitId = habit.id
+                    val habitProgressList =
+                        progressByHabitId[habitId] ?: emptyList() // Get progress for this habit
+                    val progressMapForHabit =
+                        habitProgressList.associate { // Create map for this habit's progress
+                            try {
+                                LocalDate.parse(it.entryDate) to it
+                            } catch (e: Exception) {
+                                null to null
+                            }
+                        }.filterKeys { it != null } as Map<LocalDate, HabitProgressEntity>
+
+                    // Prepare paired lists for THIS habit
+                    val moodScores = mutableListOf<Double>()
+                    val habitValues = mutableListOf<Double>()
+                    val commonDates = moodMap.keys // Use dates where mood was recorded as the basis
+
+                    commonDates.forEach { date ->
+                        val mood = moodMap[date]
+                        val progress = progressMapForHabit[date] // Progress for THIS habit
+
+                        if (mood != null) { // Ensure mood is valid for this date
+                            val moodScore = moodToValueMap[mood]?.toDouble() ?: 2.0
+                            val habitValue: Double = if (progress != null) {
+                                if (habit.type == HabitType.SCALE) {
+                                    progress.value?.toDouble() ?: 1.0
+                                } else {
+                                    1.0
+                                }
+                            } else {
+                                0.0
+                            } // Not done
+                            moodScores.add(moodScore)
+                            habitValues.add(habitValue)
+                        }
+                    } // End of commonDates.forEach
+
+                    // --- Calculate Ranks for P-Value ---
+                    val rankingAlgorithm = NaturalRanking(NaNStrategy.FAILED, TiesStrategy.AVERAGE)
+                    val xArray = moodScores.toDoubleArray() // Original scores array
+                    val yArray = habitValues.toDoubleArray() // Original values array
+                    val xRanks = try {
+                        rankingAlgorithm.rank(xArray)
+                    } catch (e: Exception) {
+                        Log.e("StatsVM", "Error ranking moodScores for ${habit.name}", e); null
+                    }
+                    val yRanks = try {
+                        rankingAlgorithm.rank(yArray)
+                    } catch (e: Exception) {
+                        Log.e("StatsVM", "Error ranking habitValues for ${habit.name}", e); null
+                    }
+                    // --- End Rank Calculation ---
+
+                    // Now calculate correlation and p-value
+                    val dataPointCount = moodScores.size
+                    // Check if ranking succeeded and we have enough data points
+                    if (dataPointCount >= 3 && xRanks != null && yRanks != null) {
+                        try {
+                            // Check for variance using ORIGINAL scores
+                            val moodVariance = moodScores.distinct().size > 1
+                            val habitVariance = habitValues.distinct().size > 1
+
+                            if (!moodVariance || !habitVariance) {
+                                Log.d(
+                                    "StatsVM",
+                                    "Skipping correlation for ${habit.name}: No variance in original data"
+                                )
+                            } else {
+                                // Calculate Spearman's Rho (uses original data arrays)
+                                val spearmanRho = SpearmansCorrelation().correlation(xArray, yArray)
+
+                                // Calculate P-Value using Pearson's on Ranks via Constructor
+                                var pValue: Double? = null
+                                try {
+                                    val dataMatrix = MatrixUtils.createRealMatrix(dataPointCount, 2)
+                                    dataMatrix.setColumn(0, xRanks) // Use calculated xRanks
+                                    dataMatrix.setColumn(1, yRanks) // Use calculated yRanks
+                                    val pearsonOnRanks = PearsonsCorrelation(dataMatrix)
+                                    val pValueMatrix =
+                                        pearsonOnRanks.correlationPValues // Get p-value matrix
+
+                                    if (pValueMatrix != null && pValueMatrix.rowDimension > 1 && pValueMatrix.columnDimension > 1) {
+                                        pValue = pValueMatrix.getEntry(
+                                            0,
+                                            1
+                                        ) // Get p-value for mood vs habit
+                                    } else {
+                                        Log.w(
+                                            "StatsVM",
+                                            "P-value matrix from Pearson constructor was null or too small for ${habit.name}"
+                                        )
+                                    }
+                                } catch (pError: Exception) {
+                                    Log.e(
+                                        "StatsVM",
+                                        "Error calculating Pearson/P-value on ranks for ${habit.name}",
+                                        pError
+                                    )
+                                    pValue = null // Ensure pValue is null on error
+                                }
+                                // End P-Value Calculation
+
+                                // Add result only if calculation was successful and values are finite
+                                if (spearmanRho.isFinite() && pValue != null && pValue.isFinite()) {
+                                    correlationResults.add(
+                                        HabitCorrelationResult(
+                                            habitId = habitId,
+                                            habitName = habit.name,
+                                            habitIconName = habit.iconName,
+                                            coefficient = spearmanRho,
+                                            pValue = pValue, // Store p-value
+                                            dataPointCount = dataPointCount
+                                        )
+                                    )
+                                    Log.d(
+                                        "StatsVM",
+                                        "Correlation for ${habit.name}: rho=$spearmanRho, p=$pValue ($dataPointCount points)"
+                                    )
+                                } else {
+                                    Log.w(
+                                        "StatsVM",
+                                        "Skipping correlation for ${habit.name}: Result or p-value not finite (rho=$spearmanRho, p=$pValue)"
+                                    )
+                                }
+                            } // End variance check
+                        } catch (e: Exception) { // Catch errors during correlation/p-value calculation
+                            Log.e(
+                                "StatsVM",
+                                "Error calculating Spearman/P-value for ${habit.name}",
+                                e
+                            )
+                        }
+                    } else { // Handle insufficient data OR ranking failure
+                        Log.d(
+                            "StatsVM",
+                            "Skipping correlation for ${habit.name}: Not enough data ($dataPointCount points) or ranking failed."
+                        )
+                    }
+                    // --- End Correlation & P-value Calculation Block ---
+
+                } // End forEach habit
+
+                // Sort results by p-value ascending, then by absolute rho descending
+                correlationResults.sortWith(compareBy<HabitCorrelationResult> {
+                    it.pValue ?: Double.MAX_VALUE
+                }.thenByDescending { abs(it.coefficient ?: 0.0) })
+                correlationResults // Return the final sorted list
+
+            }.catch { e -> // Catch errors from combine or the flows within it
+                Log.e("StatsVM", "Error combining flows for all correlations data", e)
+                emit(emptyList<HabitCorrelationResult>().toMutableList()) // Emit explicitly typed mutable empty list
+            }.collectLatest { results -> // results will be List<HabitCorrelationResult>
+                Log.d(
+                    "StatsVM",
+                    "Finished calculating all correlations. Found ${results.size} valid results."
+                )
+                _allCorrelationResults.value =
+                    results // Update state with results or empty list from catch
+                _isAllCorrelationsLoading.value = false // Loading finished
+            }
+        }
+    }
+    // --- END loadAllCorrelations function ---
+
+    private fun interpretCorrelation(rho: Double?): String {
+        return when {
+            rho == null || !rho.isFinite() -> "Calculation error."
+            abs(rho) >= 0.7 -> if (rho > 0) "Strong positive" else "Strong negative"
+            abs(rho) >= 0.4 -> if (rho > 0) "Moderate positive" else "Moderate negative"
+            abs(rho) >= 0.1 -> if (rho > 0) "Weak positive" else "Weak negative"
+            else -> "No significant correlation"
+        }
     }
 
     data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

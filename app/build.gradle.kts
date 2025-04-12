@@ -69,6 +69,8 @@ dependencies {
     implementation("com.patrykandpatrick.vico:core:$vicoVersion")
     implementation("com.patrykandpatrick.vico:compose-m3:$vicoVersion")
 
+    implementation("org.apache.commons:commons-math3:3.6.1")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
