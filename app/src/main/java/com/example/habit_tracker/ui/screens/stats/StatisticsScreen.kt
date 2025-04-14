@@ -26,7 +26,8 @@ import com.example.habit_tracker.ui.components.BottomNavigationBar
 import com.example.habit_tracker.ui.components.HabitFrequencyCard
 import com.example.habit_tracker.ui.components.HabitMoodCorrelationListCard
 import com.example.habit_tracker.ui.components.HabitYearInPixelsCard
-import com.example.habit_tracker.ui.components.MoodChartCard
+// Import MoodChartCard only if still used elsewhere, otherwise remove
+// import com.example.habit_tracker.ui.components.MoodChartCard
 import com.example.habit_tracker.ui.components.MoodDistributionChartCard
 import com.example.habit_tracker.ui.components.MoodLineChartCard
 import com.example.habit_tracker.ui.components.YearInPixelsCard
@@ -43,21 +44,18 @@ fun StatisticsScreen(
     navController: NavController,
     statisticsViewModel: StatisticsViewModel = viewModel()
 ) {
-    // --- Collect State from ViewModel ---
     val currentMode by statisticsViewModel.statisticsMode.collectAsStateWithLifecycle()
     val currentYearMonth by statisticsViewModel.currentYearMonth.collectAsStateWithLifecycle()
     val currentYear by statisticsViewModel.currentYear.collectAsStateWithLifecycle()
-    val showMoodCharts by statisticsViewModel.showMoodChart.collectAsStateWithLifecycle()
+    // val showMoodCharts by statisticsViewModel.showMoodChart.collectAsStateWithLifecycle() // Removed if not needed
     val moodSummary by statisticsViewModel.moodSummaryData.collectAsStateWithLifecycle()
     val isMoodLoading by statisticsViewModel.isMoodLoading.collectAsStateWithLifecycle()
     val yearPixelsData by statisticsViewModel.yearInPixelsData.collectAsStateWithLifecycle()
     val isYearPixelsLoading by statisticsViewModel.isYearInPixelsLoading.collectAsStateWithLifecycle()
-    // *** Collect Habit Pixel State ***
     val allHabits by statisticsViewModel.allHabits.collectAsStateWithLifecycle()
     val selectedHabitIdForPixels by statisticsViewModel.selectedHabitIdForPixels.collectAsStateWithLifecycle()
     val habitPixelData by statisticsViewModel.habitPixelData.collectAsStateWithLifecycle()
     val isHabitPixelLoading by statisticsViewModel.isHabitPixelLoading.collectAsStateWithLifecycle()
-    // *** Add these lines to collect state ***
     val allCorrelationResults by statisticsViewModel.allCorrelationResults.collectAsStateWithLifecycle()
     val isAllCorrelationsLoading by statisticsViewModel.isAllCorrelationsLoading.collectAsStateWithLifecycle()
 
@@ -86,10 +84,9 @@ fun StatisticsScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // --- Conditional Time Period Switcher ---
                 when (currentMode) {
                     StatisticsMode.MONTHLY -> {
-                        MonthSwitcher( // ... parameters ...
+                        MonthSwitcher(
                             currentMonth = currentYearMonth,
                             monthYearFormatter = monthYearFormatter,
                             onPreviousMonth = statisticsViewModel::showPreviousTimePeriod,
@@ -108,36 +105,33 @@ fun StatisticsScreen(
                     }
                 }
 
-
-                if (currentMode == StatisticsMode.MONTHLY && showMoodCharts) {
-                    MoodChartCard(viewModel = statisticsViewModel)
+                if (currentMode == StatisticsMode.MONTHLY) {
+                    MoodDistributionChartCard(
+                        title = "Mood Distribution for ${monthYearFormatter.format(currentYearMonth)}",
+                        moodDistribution = moodSummary?.distribution,
+                        isLoading = isMoodLoading
+                    )
                     MoodLineChartCard(viewModel = statisticsViewModel)
                 }
 
-                // Yearly Cards
                 if (currentMode == StatisticsMode.YEARLY) {
-                    // Yearly Mood Distribution Chart
                     MoodDistributionChartCard(
                         title = "Yearly Mood Distribution",
                         moodDistribution = moodSummary?.distribution,
                         isLoading = isMoodLoading
                     )
-
-                    // Mood Year In Pixels Card
                     YearInPixelsCard(
                         selectedYear = currentYear,
                         pixelData = yearPixelsData,
                         isLoading = isYearPixelsLoading
                     )
-
-                    // *** Add Habit Year In Pixels Card ***
                     HabitYearInPixelsCard(
                         selectedYear = currentYear,
-                        allHabits = allHabits, // Pass list of habits
-                        selectedHabitId = selectedHabitIdForPixels, // Pass selected ID
-                        habitPixelData = habitPixelData, // Pass habit pixel map
-                        isLoading = isHabitPixelLoading, // Pass loading state
-                        onHabitSelected = statisticsViewModel::selectHabitForPixels // Pass callback
+                        allHabits = allHabits,
+                        selectedHabitId = selectedHabitIdForPixels,
+                        habitPixelData = habitPixelData,
+                        isLoading = isHabitPixelLoading,
+                        onHabitSelected = statisticsViewModel::selectHabitForPixels
                     )
                 }
 
@@ -146,41 +140,36 @@ fun StatisticsScreen(
                     viewModel = statisticsViewModel
                 )
 
-                Spacer(modifier = Modifier.height(16.dp)) // Bottom padding
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
-
-// --- StatisticsModeTabs Composable (private) ---
-@OptIn(ExperimentalMaterial3Api::class) // Needed for PrimaryTabRow/Tab
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StatisticsModeTabs(
     selectedMode: StatisticsMode,
     onModeSelected: (StatisticsMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val modes = StatisticsMode.values() // Get all enum values (MONTHLY, YEARLY)
+    val modes = StatisticsMode.values()
     PrimaryTabRow(
-        selectedTabIndex = selectedMode.ordinal, // Use enum ordinal (0 for MONTHLY, 1 for YEARLY)
-        modifier = modifier.fillMaxWidth() // Make the row take full width
+        selectedTabIndex = selectedMode.ordinal,
+        modifier = modifier.fillMaxWidth()
     ) {
-        // Create a Tab for each mode in the enum
         modes.forEachIndexed { index, mode ->
             Tab(
-                selected = selectedMode == mode, // Highlight the tab if it's the selected mode
-                onClick = { onModeSelected(mode) }, // Call the provided lambda when clicked
+                selected = selectedMode == mode,
+                onClick = { onModeSelected(mode) },
                 text = {
                     Text(
-                        // Display the mode name, capitalized
                         text = mode.name.lowercase()
                             .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-                        maxLines = 1, // Prevent text wrapping
-                        overflow = TextOverflow.Ellipsis // Handle cases if text is too long
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                // You can also add icons here if desired using the 'icon = { ... }' parameter
             )
         }
     }
