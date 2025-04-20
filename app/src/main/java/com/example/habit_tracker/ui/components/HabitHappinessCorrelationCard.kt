@@ -30,17 +30,14 @@ import com.example.habit_tracker.viewmodel.HabitCorrelationResult
 import com.example.habit_tracker.viewmodel.StatisticsViewModel
 import kotlin.math.abs
 
-
 @Composable
 fun HabitMoodCorrelationListCard(
     viewModel: StatisticsViewModel,
     modifier: Modifier = Modifier
 ) {
-    // Collect state from ViewModel
     val correlationResults by viewModel.allCorrelationResults.collectAsStateWithLifecycle()
     val isLoading by viewModel.isAllCorrelationsLoading.collectAsStateWithLifecycle()
 
-    // Determine states for display
     val showList = !isLoading && correlationResults.isNotEmpty()
     val showEmptyMessage = !isLoading && correlationResults.isEmpty()
 
@@ -61,26 +58,23 @@ fun HabitMoodCorrelationListCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
-                    .defaultMinSize(minHeight = 50.dp), // Give some min height
+                    .defaultMinSize(minHeight = 50.dp),
                 contentAlignment = Alignment.Center
             ) {
                 when {
                     isLoading -> {
                         CircularProgressIndicator()
                     }
-
                     showList -> {
                         Column(
                             horizontalAlignment = Alignment.Start,
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            // Display only top N results? Or all? Displaying all for now.
                             correlationResults.forEach { result ->
-                                CorrelationItemRow(result = result) // Use helper composable
+                                CorrelationItemRow(result = result)
                             }
                         }
                     }
-
                     showEmptyMessage -> {
                         Text(
                             "No significant correlations calculable for this period.",
@@ -93,9 +87,8 @@ fun HabitMoodCorrelationListCard(
     }
 }
 
-// Helper composable for displaying a single correlation result row
 @Composable
-private fun CorrelationItemRow( // Renamed for clarity
+private fun CorrelationItemRow(
     result: HabitCorrelationResult,
     modifier: Modifier = Modifier
 ) {
@@ -104,7 +97,6 @@ private fun CorrelationItemRow( // Renamed for clarity
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left side: Icon and Name
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(result.habitIconName)
             Text(
@@ -118,30 +110,21 @@ private fun CorrelationItemRow( // Renamed for clarity
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = 8.dp) // Space before coefficient
+                modifier = Modifier.padding(end = 8.dp)
             )
         }
 
-        // Right side: Coefficient and P-Value
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = result.coefficient?.let { coeff -> // Give the non-null coefficient a name
-                    val formatted = "%.2f".format(coeff) // Format it
-                    if (coeff >= 0.0) "+$formatted" else formatted // Prepend "+" if original coeff >= 0.0
-                } ?: "N/A", // Fallback if coefficient is null
+                text = formatCoefficient(result.coefficient),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color = getCorrelationItemColor(
-                    result.coefficient,
-                    result.pValue
-                ) // Updated color logic
+                color = getCorrelationItemColor(result.coefficient, result.pValue)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = result.pValue?.let { p -> if (p < 0.001) "p < 0.001" else "p = %.3f".format(p) }
-                    ?: "(p N/A)",
+                text = formatPValue(result.pValue),
                 style = MaterialTheme.typography.bodySmall,
-                // Conditionally make p-value bold if significant
                 fontWeight = if (result.pValue != null && result.pValue < 0.05) FontWeight.Bold else FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -149,22 +132,28 @@ private fun CorrelationItemRow( // Renamed for clarity
     }
 }
 
+private fun formatCoefficient(coefficient: Double?): String {
+    return coefficient?.let { coeff ->
+        val formatted = "%.2f".format(coeff)
+        if (coeff >= 0.0) "+$formatted" else formatted
+    } ?: "N/A"
+}
 
-// Updated helper to optionally factor in p-value for color
+private fun formatPValue(pValue: Double?): String {
+    return pValue?.let { p -> 
+        if (p < 0.001) "p < 0.001" else "p = %.3f".format(p)
+    } ?: "(p N/A)"
+}
+
 private fun getCorrelationItemColor(rho: Double?, pValue: Double?): Color {
-    // Significance threshold (e.g., 0.05)
     val alpha = 0.05
     val isSignificant = pValue != null && pValue < alpha
 
     return when {
-        rho == null || !rho.isFinite() -> Color.Gray // Error state
-        // Only color significantly if p-value is low enough
-        isSignificant && abs(rho) >= 0.7 -> if (rho > 0) Color(0xFF1B5E20) else Color(0xFFB71C1C) // Stronger Green/Red
-        isSignificant && abs(rho) >= 0.4 -> if (rho > 0) Color(0xFF388E3C) else Color(0xFFD32F2F) // Moderate Green/Red
-        isSignificant && abs(rho) >= 0.1 -> if (rho > 0) Color(0xFF66BB6A) else Color(0xFFEF5350) // Weaker Green/Red
-        // If not significant OR weak correlation even if significant by chance, use muted color
+        rho == null || !rho.isFinite() -> Color.Gray
+        isSignificant && abs(rho) >= 0.7 -> if (rho > 0) Color(0xFF1B5E20) else Color(0xFFB71C1C)
+        isSignificant && abs(rho) >= 0.4 -> if (rho > 0) Color(0xFF388E3C) else Color(0xFFD32F2F)
+        isSignificant && abs(rho) >= 0.1 -> if (rho > 0) Color(0xFF66BB6A) else Color(0xFFEF5350)
         else -> Color.DarkGray
     }
 }
-
-// Import abs if not already done at file level

@@ -46,12 +46,12 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
-val HabitNotDoneColor = Color(0xFFF44336)   // Example: Red
+val HabitNotDoneColor = Color(0xFFF44336)
 val HabitNoEntryColor = Color.LightGray.copy(alpha = 0.5f)
 
-val HabitDoneBinaryColor = Color(0xFF4CAF50)   // Example: Green (for binary)
-val HabitDoneScaleLowColor = Color(0xFFFFA000)  // Example: Orange (for scale 1) - Adjust as needed
-val HabitDoneScaleMediumColor = Color(0xFFCDDC39) // Example: Lime (for scale 2) - Adjust as needed
+val HabitDoneBinaryColor = Color(0xFF4CAF50)  
+val HabitDoneScaleLowColor = Color(0xFFFFA000)
+val HabitDoneScaleMediumColor = Color(0xFFCDDC39)
 val HabitDoneScaleHighColor = Color(0xFF388E3C)
 
 fun getColorForHabitStatus(status: HabitCompletionStatus?): Color {
@@ -62,7 +62,7 @@ fun getColorForHabitStatus(status: HabitCompletionStatus?): Color {
         HabitCompletionStatus.DONE_SCALE_HIGH -> HabitDoneScaleHighColor
         HabitCompletionStatus.NOT_DONE -> HabitNotDoneColor
         HabitCompletionStatus.NO_ENTRY -> HabitNoEntryColor
-        null -> HabitNoEntryColor // Default fallback
+        null -> HabitNoEntryColor
     }
 }
 
@@ -70,15 +70,14 @@ fun getColorForHabitStatus(status: HabitCompletionStatus?): Color {
 @Composable
 fun HabitYearInPixelsCard(
     selectedYear: Year,
-    allHabits: List<HabitEntity>, // List of available habits
-    selectedHabitId: Int?,        // Currently selected habit ID
-    habitPixelData: Map<LocalDate, HabitCompletionStatus>, // Pixel data for the selected habit
-    isLoading: Boolean,           // Loading state for pixel data
-    onHabitSelected: (Int?) -> Unit, // Callback when a habit is selected
+    allHabits: List<HabitEntity>,
+    selectedHabitId: Int?,
+    habitPixelData: Map<LocalDate, HabitCompletionStatus>,
+    isLoading: Boolean,
+    onHabitSelected: (Int?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isDropdownExpanded by remember { mutableStateOf(false) }
-    // Find the selected habit name for display, default to "Select Habit"
     val selectedHabitText = remember(selectedHabitId, allHabits) {
         allHabits.find { it.id == selectedHabitId }?.name ?: "Select a Habit"
     }
@@ -95,96 +94,129 @@ fun HabitYearInPixelsCard(
             )
             Spacer(Modifier.height(8.dp))
 
-            // --- Habit Selector Dropdown ---
-            ExposedDropdownMenuBox(
-                expanded = isDropdownExpanded,
-                onExpandedChange = { isDropdownExpanded = !isDropdownExpanded },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField( // Or use standard TextField if preferred
-                    value = selectedHabitText,
-                    onValueChange = {}, // Input is read-only
-                    readOnly = true,
-                    label = { Text("Habit") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
-                    modifier = Modifier
-                        .menuAnchor() // Important for positioning the dropdown
-                        .fillMaxWidth()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = isDropdownExpanded,
-                    onDismissRequest = { isDropdownExpanded = false }
-                ) {
-                    // Option to deselect
-                    DropdownMenuItem(
-                        text = { Text("None") },
-                        onClick = {
-                            onHabitSelected(null) // Pass null ID
-                            isDropdownExpanded = false
-                        }
-                    )
-                    // Options for each habit
-                    allHabits.forEach { habit ->
-                        DropdownMenuItem(
-                            text = { Text(habit.name) },
-                            leadingIcon = {
-                                // Use the same icon rendering technique
-                                val symbolChar =
-                                    MaterialSymbolsRepository.getSymbolCharSafe(habit.iconName)
-                                Text(
-                                    text = symbolChar,
-                                    fontFamily = MaterialSymbols, // Apply the special font
-                                    fontSize = 18.sp // Adjust size as needed for menu items
-                                    // Color will typically be inherited from DropdownMenuItem's content color
-                                )
-                            },
-                            onClick = {
-                                onHabitSelected(habit.id) // Pass selected habit's ID
-                                isDropdownExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-            // --- End Dropdown ---
+            HabitSelector(
+                selectedHabitText = selectedHabitText,
+                isDropdownExpanded = isDropdownExpanded,
+                onExpandedChange = { isDropdownExpanded = it },
+                allHabits = allHabits,
+                onHabitSelected = onHabitSelected
+            )
 
             Spacer(Modifier.height(16.dp))
 
-            // --- Pixel Grid Area ---
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isLoading && selectedHabitId != null) { // Only show loading if a habit is selected and loading
-                    CircularProgressIndicator()
-                } else if (selectedHabitId == null) {
-                    Text("Please select a habit above.")
-                } else {
-                    // Reuse the pixel grid layout logic (can be extracted later)
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Month.entries.forEach { month ->
-                            HabitMonthPixelRow( // Use a distinct name for clarity
-                                yearMonth = YearMonth.of(selectedYear.value, month),
-                                pixelData = habitPixelData // Pass the habit-specific pixel data
-                            )
-                        }
-                    }
+            PixelGridArea(
+                selectedHabitId = selectedHabitId,
+                selectedYear = selectedYear,
+                habitPixelData = habitPixelData,
+                isLoading = isLoading
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HabitSelector(
+    selectedHabitText: String,
+    isDropdownExpanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    allHabits: List<HabitEntity>,
+    onHabitSelected: (Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ExposedDropdownMenuBox(
+        expanded = isDropdownExpanded,
+        onExpandedChange = { onExpandedChange(!isDropdownExpanded) },
+        modifier = modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = selectedHabitText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Habit") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+
+        ExposedDropdownMenu(
+            expanded = isDropdownExpanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = {
+                    onHabitSelected(null)
+                    onExpandedChange(false)
                 }
+            )
+            
+            allHabits.forEach { habit ->
+                DropdownMenuItem(
+                    text = { Text(habit.name) },
+                    leadingIcon = {
+                        val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(habit.iconName)
+                        Text(
+                            text = symbolChar,
+                            fontFamily = MaterialSymbols,
+                            fontSize = 18.sp
+                        )
+                    },
+                    onClick = {
+                        onHabitSelected(habit.id)
+                        onExpandedChange(false)
+                    }
+                )
             }
         }
     }
 }
 
-// Reusable composable for the row of pixels for a specific month
+@Composable
+private fun PixelGridArea(
+    selectedHabitId: Int?,
+    selectedYear: Year,
+    habitPixelData: Map<LocalDate, HabitCompletionStatus>,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            isLoading && selectedHabitId != null -> CircularProgressIndicator()
+            selectedHabitId == null -> Text("Please select a habit above.")
+            else -> MonthlyPixelGrid(selectedYear, habitPixelData)
+        }
+    }
+}
+
+@Composable
+private fun MonthlyPixelGrid(
+    selectedYear: Year,
+    habitPixelData: Map<LocalDate, HabitCompletionStatus>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Month.entries.forEach { month ->
+            HabitMonthPixelRow(
+                yearMonth = YearMonth.of(selectedYear.value, month),
+                pixelData = habitPixelData
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HabitMonthPixelRow( // Changed name slightly
+private fun HabitMonthPixelRow(
     yearMonth: YearMonth,
-    pixelData: Map<LocalDate, HabitCompletionStatus>, // Expects habit status data
+    pixelData: Map<LocalDate, HabitCompletionStatus>,
     modifier: Modifier = Modifier
 ) {
     val monthDisplayName = remember(yearMonth) {
@@ -214,15 +246,12 @@ private fun HabitMonthPixelRow( // Changed name slightly
         ) {
             for (day in 1..daysInMonth) {
                 val date = yearMonth.atDay(day)
-                // Look up habit status for this specific date
-                val status =
-                    pixelData[date] ?: HabitCompletionStatus.NO_ENTRY // Default if somehow missing
+                val status = pixelData[date] ?: HabitCompletionStatus.NO_ENTRY
 
                 Box(
                     modifier = Modifier
                         .size(pixelSize)
                         .clip(CircleShape)
-                        // Use the habit status color function
                         .background(getColorForHabitStatus(status))
                 )
             }

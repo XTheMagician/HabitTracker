@@ -28,10 +28,6 @@ import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 
-// Removed formatter/math imports as they are not used now
-// import com.patrykandpatrick.vico.core.cartesian.formatter.CartesianValueFormatter
-// import kotlin.math.roundToInt
-
 @Composable
 fun MoodDistributionChartCard(
     title: String,
@@ -39,7 +35,6 @@ fun MoodDistributionChartCard(
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
-    // moodOrder is only needed if we customize labels later, keep for now
     val moodOrder = remember {
         listOf(Mood.VERY_BAD, Mood.BAD, Mood.NEUTRAL, Mood.GOOD, Mood.VERY_GOOD)
     }
@@ -53,13 +48,11 @@ fun MoodDistributionChartCard(
                     moodDistribution.getOrDefault(mood, 0).toFloat()
                 }
                 columnSeries {
-                    series(counts) // Provide the Y-values (counts)
+                    series(counts)
                 }
             }
         }
     }
-
-    // Removed valueFormatter declarations
 
     Card(
         modifier = modifier
@@ -84,9 +77,8 @@ fun MoodDistributionChartCard(
                         CartesianChartHost(
                             chart = rememberCartesianChart(
                                 layers = arrayOf(rememberColumnCartesianLayer()),
-                                // Use default axes without formatters or item placers
-                                startAxis = VerticalAxis.rememberStart(), // Vico default labels and ticks
-                                bottomAxis = HorizontalAxis.rememberBottom() // Vico default labels and ticks
+                                startAxis = VerticalAxis.rememberStart(),
+                                bottomAxis = HorizontalAxis.rememberBottom()
                             ),
                             modelProducer = modelProducer,
                             modifier = Modifier.fillMaxWidth()

@@ -34,7 +34,6 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
-// --- Color definitions (Keep these or move to Theme/Constants) ---
 val VeryBadColor = Color(0xFFD32F2F)
 val BadColor = Color(0xFFFFA000)
 val NeutralColor = Color(0xFFFFEB3B)
@@ -53,14 +52,13 @@ fun getColorForMood(mood: Mood?): Color {
         null -> NoEntryColor
     }
 }
-// --- End Colors ---
 
 
-@OptIn(ExperimentalLayoutApi::class) // Needed for FlowRow
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun YearInPixelsCard(
     selectedYear: Year,
-    pixelData: Map<LocalDate, Mood>, // Map of Date -> Mood
+    pixelData: Map<LocalDate, Mood>,
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -83,12 +81,10 @@ fun YearInPixelsCard(
                 if (isLoading) {
                     CircularProgressIndicator()
                 } else {
-                    // Display months vertically
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp) // Space between month rows
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Iterate through all 12 months
                         Month.entries.forEach { month ->
                             MonthPixelRow(
                                 yearMonth = YearMonth.of(selectedYear.value, month),
@@ -102,7 +98,7 @@ fun YearInPixelsCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class) // Needed for FlowRow
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MonthPixelRow(
     yearMonth: YearMonth,
@@ -116,37 +112,34 @@ private fun MonthPixelRow(
     val daysInMonth = yearMonth.lengthOfMonth()
     val firstDayOfMonth = yearMonth.atDay(1)
 
-    val pixelSize = 10.dp // Smaller pixel size might fit better
+    val pixelSize = 10.dp
     val pixelSpacing = 2.dp
 
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Month Label (fixed width)
         Text(
-            text = monthDisplayName.take(3), // Abbreviate month name (e.g., "Jan")
+            text = monthDisplayName.take(3),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(40.dp) // Give label some space
+            modifier = Modifier.width(40.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Use FlowRow to wrap pixels automatically
         FlowRow(
-            modifier = Modifier.weight(1f), // Take remaining space
+            modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(pixelSpacing),
             verticalArrangement = Arrangement.spacedBy(pixelSpacing)
         ) {
-            // Generate pixels for each day of the month
             for (day in 1..daysInMonth) {
                 val date = yearMonth.atDay(day)
-                val mood = pixelData[date] // Look up mood for this specific date
+                val mood = pixelData[date]
 
                 Box(
                     modifier = Modifier
                         .size(pixelSize)
-                        .clip(CircleShape) // Make them circular dots
+                        .clip(CircleShape)
                         .background(getColorForMood(mood))
                 )
             }
