@@ -21,13 +21,24 @@ import com.example.habit_tracker.ui.navigation.AppDestinations // Import your de
 private val items = listOf(
     ScreenNavItem(
         "Entries",
-        AppDestinations.HOME,
+        AppDestinations.HOME, // Use constant
         Icons.Default.List
-    ), // Assuming HOME is your entries list
-    ScreenNavItem("Stats", AppDestinations.STATISTICS, Icons.Default.BarChart),
-    // Add Calendar and More destinations if/when you create them
-    ScreenNavItem("Calendar", "calendar_route", Icons.Default.CalendarToday), // Placeholder route
-    ScreenNavItem("More", "more_route", Icons.Default.MoreHoriz) // Placeholder route
+    ),
+    ScreenNavItem(
+        "Stats",
+        AppDestinations.STATISTICS, // Use constant
+        Icons.Default.BarChart
+    ),
+    ScreenNavItem(
+        "Calendar",
+        AppDestinations.CALENDAR, // *** FIX: Use constant from AppDestinations ***
+        Icons.Default.CalendarToday
+    ),
+    ScreenNavItem(
+        "More",
+        AppDestinations.MORE, // *** FIX: Use constant from AppDestinations ***
+        Icons.Default.MoreHoriz
+    )
 )
 
 // Data class to hold navigation item info
@@ -52,6 +63,7 @@ fun BottomNavigationBar(navController: NavController) { // Accept NavController
                 onClick = {
                     // Navigate only if the selected destination is different
                     if (currentDestination?.route != screen.route) {
+                        // Use the correct route from the 'screen' object (which now uses AppDestinations)
                         navController.navigate(screen.route) {
                             // Pop up to the start destination of the graph to
                             // avoid building up a large stack of destinations

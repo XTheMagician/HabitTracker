@@ -37,18 +37,17 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
-// Enum for Mode
 enum class StatisticsMode {
     MONTHLY, YEARLY
 }
 
 enum class HabitCompletionStatus {
-    DONE_BINARY,       // Binary habit was completed
-    DONE_SCALE_LOW,    // Scale habit value 1
-    DONE_SCALE_MEDIUM, // Scale habit value 2
-    DONE_SCALE_HIGH,   // Scale habit value 3
-    NOT_DONE,          // Entry exists, but this habit wasn't done
-    NO_ENTRY           // No entry exists for the day
+    DONE_BINARY,
+    DONE_SCALE_LOW,
+    DONE_SCALE_MEDIUM,
+    DONE_SCALE_HIGH,
+    NOT_DONE,
+    NO_ENTRY
 }
 
 data class HabitFrequencyStat(
@@ -66,7 +65,7 @@ data class HabitCorrelationResult(
     val habitId: Int,
     val habitName: String,
     val habitIconName: String,
-    val coefficient: Double?, // Spearman's Rho
+    val coefficient: Double?,
     val pValue: Double?,
     val dataPointCount: Int
 )
@@ -74,13 +73,11 @@ data class HabitCorrelationResult(
 @OptIn(ExperimentalCoroutinesApi::class)
 class StatisticsViewModel(application: Application) : AndroidViewModel(application) {
 
-    // --- DAOs ---
     private val entryDao: HabitEntryDao = AppDatabase.getDatabase(application).habitEntryDao()
     private val habitDao: HabitDao = AppDatabase.getDatabase(application).habitDao()
     private val progressDao: HabitProgressDao =
         AppDatabase.getDatabase(application).habitProgressDao()
 
-    // --- State for Mode and Time Range ---
     private val _statisticsMode = MutableStateFlow(StatisticsMode.MONTHLY)
     val statisticsMode: StateFlow<StatisticsMode> = _statisticsMode.asStateFlow()
 
@@ -90,7 +87,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val _currentYear = MutableStateFlow(Year.now())
     val currentYear: StateFlow<Year> = _currentYear.asStateFlow()
 
-    // --- Mood Data State ---
     private val _moodChartData = MutableStateFlow<List<Pair<Float, Float>>>(emptyList())
     val moodChartData: StateFlow<List<Pair<Float, Float>>> = _moodChartData.asStateFlow()
 
@@ -103,7 +99,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val _moodSummaryData = MutableStateFlow<MoodSummary?>(null)
     val moodSummaryData: StateFlow<MoodSummary?> = _moodSummaryData.asStateFlow()
 
-    // --- Habit Frequency State ---
     private val _habitFrequencyData = MutableStateFlow<List<HabitFrequencyStat>>(emptyList())
     val habitFrequencyData: StateFlow<List<HabitFrequencyStat>> = _habitFrequencyData.asStateFlow()
 
@@ -113,14 +108,12 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val _showHabitFrequency = MutableStateFlow(false)
     val showHabitFrequency: StateFlow<Boolean> = _showHabitFrequency.asStateFlow()
 
-    // --- Year In Pixels (Mood) ---
     private val _yearInPixelsData = MutableStateFlow<Map<LocalDate, Mood>>(emptyMap())
     val yearInPixelsData: StateFlow<Map<LocalDate, Mood>> = _yearInPixelsData.asStateFlow()
 
     private val _isYearInPixelsLoading = MutableStateFlow(true)
     val isYearInPixelsLoading: StateFlow<Boolean> = _isYearInPixelsLoading.asStateFlow()
 
-    // --- Habit Correlation ---
     private val _allCorrelationResults = MutableStateFlow<List<HabitCorrelationResult>>(emptyList())
     val allCorrelationResults: StateFlow<List<HabitCorrelationResult>> =
         _allCorrelationResults.asStateFlow()
@@ -128,7 +121,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val _isAllCorrelationsLoading = MutableStateFlow(false)
     val isAllCorrelationsLoading: StateFlow<Boolean> = _isAllCorrelationsLoading.asStateFlow()
 
-    // --- Habit Year In Pixels ---
     val allHabits: StateFlow<List<HabitEntity>> = habitDao.getAllHabits()
         .catch { e ->
             Log.e("StatsVM", "Error loading all habits", e)
@@ -147,7 +139,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val _isHabitPixelLoading = MutableStateFlow(false)
     val isHabitPixelLoading: StateFlow<Boolean> = _isHabitPixelLoading.asStateFlow()
 
-    // --- Internal Helpers ---
     private val moodToValueMap = mapOf(
         Mood.VERY_BAD to 0f,
         Mood.BAD to 1f,
@@ -157,41 +148,34 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     )
     private val isoDateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_DATE
 
-    // --- Initialization ---
     init {
         observeTimeRangeChangesAndLoadData()
     }
 
-    // --- Public Control Functions ---
     fun setMode(mode: StatisticsMode) {
         val previousMode = _statisticsMode.value
-        if (previousMode == mode) return // No change
+        if (previousMode == mode) return
 
         _statisticsMode.value = mode
 
-        // If switching TO yearly mode, trigger habit pixel load if a habit is selected
         if (mode == StatisticsMode.YEARLY) {
-            loadHabitPixelDataForSelectedHabitAndYear() // Safe, checks internally
+            loadHabitPixelDataForSelectedHabitAndYear()
         } else {
-            // If switching away from yearly, clear the habit pixel data
             _habitPixelData.value = emptyMap()
             _isHabitPixelLoading.value = false
         }
-        // General data loading is handled by observeTimeRangeChangesAndLoadData
     }
 
     fun selectHabitForPixels(habitId: Int?) {
         val oldHabitId = _selectedHabitIdForPixels.value
-        if (oldHabitId == habitId) return // No actual change
+        if (oldHabitId == habitId) return
 
         Log.d("StatsVM", "Habit selected for pixel view: $habitId")
-        _selectedHabitIdForPixels.value = habitId // Update the state
+        _selectedHabitIdForPixels.value = habitId
 
-        // Trigger loading ONLY if mode is Yearly
         if (_statisticsMode.value == StatisticsMode.YEARLY) {
-            loadHabitPixelDataForSelectedHabitAndYear() // Safe, checks internally
+            loadHabitPixelDataForSelectedHabitAndYear()
         } else {
-            // If not in yearly mode, ensure data is cleared (or just do nothing, it won't be shown)
             _habitPixelData.value = emptyMap()
             _isHabitPixelLoading.value = false
         }
@@ -204,11 +188,9 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 
             StatisticsMode.YEARLY -> {
                 _currentYear.value = _currentYear.value.minusYears(1)
-                // Reload habit pixels for the new year if in yearly mode
-                loadHabitPixelDataForSelectedHabitAndYear() // Safe, checks internally
+                loadHabitPixelDataForSelectedHabitAndYear()
             }
         }
-        // General data loading is handled by observeTimeRangeChangesAndLoadData
     }
 
     fun showNextTimePeriod() {
@@ -218,17 +200,13 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 
             StatisticsMode.YEARLY -> {
                 _currentYear.value = _currentYear.value.plusYears(1)
-                // Reload habit pixels for the new year if in yearly mode
-                loadHabitPixelDataForSelectedHabitAndYear() // Safe, checks internally
+                loadHabitPixelDataForSelectedHabitAndYear()
             }
         }
-        // General data loading is handled by observeTimeRangeChangesAndLoadData
     }
 
-    // --- Data Loading Orchestration ---
     private fun observeTimeRangeChangesAndLoadData() {
         viewModelScope.launch {
-            // Combine flows that trigger general reloads based on time/mode
             combine(
                 statisticsMode,
                 currentYearMonth,
@@ -243,24 +221,18 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                     )
                     val (startDate, endDate) = calculateDateRange(mode, month, year)
 
-                    // Load data common to both modes or mode-dependent but based on time range
                     loadMoodData(mode, startDate, endDate)
                     loadHabitFrequencyData(startDate, endDate)
-                    loadAllCorrelations(startDate, endDate) // Correlations depend on the range
+                    loadAllCorrelations(startDate, endDate)
 
-                    // Load data specific to Yearly mode (excluding habit pixels which are handled separately)
                     if (mode == StatisticsMode.YEARLY) {
-                        loadYearInPixelsData(year) // Mood pixels
+                        loadYearInPixelsData(year)
                     } else {
-                        // Clear yearly-specific data when not in yearly mode
                         _yearInPixelsData.value = emptyMap(); _isYearInPixelsLoading.value = false
-                        // Habit pixels are cleared by setMode/selectHabit when necessary
                     }
                 }
         }
     }
-
-    // --- Specific Data Loaders ---
 
     private fun calculateDateRange(
         mode: StatisticsMode,
@@ -359,19 +331,16 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // *** REVISED: Loads data based on current state ***
     private fun loadHabitPixelDataForSelectedHabitAndYear() {
-        // Read current state values
         val habitId = _selectedHabitIdForPixels.value
         val year = _currentYear.value
         val mode = _statisticsMode.value
 
-        // Exit if no habit selected or not in yearly mode
         if (habitId == null || mode != StatisticsMode.YEARLY) {
-            if (habitId == null) { // Ensure data is cleared if habit ID is null
+            if (habitId == null) {
                 _habitPixelData.value = emptyMap()
             }
-            _isHabitPixelLoading.value = false // Ensure loading indicator is off
+            _isHabitPixelLoading.value = false
             return
         }
 
@@ -462,11 +431,10 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-
     private fun loadAllCorrelations(startDate: LocalDate, endDate: LocalDate) {
         viewModelScope.launch {
             _isAllCorrelationsLoading.value = true
-            _allCorrelationResults.value = emptyList() // Clear previous
+            _allCorrelationResults.value = emptyList()
 
             val startDateString = startDate.format(isoDateFormatter)
             val endDateString = endDate.format(isoDateFormatter)
@@ -615,10 +583,10 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                 correlationResults.sortWith(compareBy<HabitCorrelationResult> {
                     it.pValue ?: Double.MAX_VALUE
                 }.thenByDescending { abs(it.coefficient ?: 0.0) })
-                correlationResults // Return final list
+                correlationResults
             }.catch { e ->
                 Log.e("StatsVM", "Error combining flows for all correlations data", e)
-                emit(emptyList<HabitCorrelationResult>().toMutableList()) // Emit typed empty list
+                emit(emptyList<HabitCorrelationResult>().toMutableList())
             }.collectLatest { results ->
                 Log.d(
                     "StatsVM",
@@ -630,7 +598,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // --- Processing Helpers ---
     private fun processMoodChartData(moodEntries: List<MoodDataPoint>): List<Pair<Float, Float>> {
         return moodEntries.mapIndexedNotNull { index, dataPoint ->
             try {
@@ -652,7 +619,7 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                 moodToValueMap[moodEnum]?.toDouble() ?: 2.0
             } catch (e: Exception) {
                 2.0
-            } // Default score on error
+            }
         }
         return MoodSummary((totalScore / moodEntries.size).toFloat(), distribution.toMap())
     }
@@ -671,7 +638,4 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
             }
             .sortedByDescending { it.count }
     }
-
-    // Unused interpretCorrelation function removed for brevity unless needed elsewhere
-    // data class Quadruple removed as it's unused
 }
