@@ -84,326 +84,429 @@ fun HabitSelectionScreen(
     val habitProgressMap = remember { mutableStateMapOf<Int, Int?>() }
     val habits = habitViewModel.habits.collectAsState().value
     var selectedMood by remember { mutableStateOf(mood) }
-    val scrollState = rememberScrollState()
-
+    
+    // Dialog states
     var showDeleteDialog by remember { mutableStateOf(false) }
     var habitToDelete by remember { mutableStateOf<Habit?>(null) }
-
     var showNewCategoryDialog by remember { mutableStateOf(false) }
-    var newCategoryNameInput by remember { mutableStateOf("") }
-
     var showScalableInputDialog by remember { mutableStateOf(false) }
     var scalableHabitToEdit by remember { mutableStateOf<Habit?>(null) }
 
+    // Load existing entry data if available
     LaunchedEffect(date) {
-        habitProgressMap.clear()
-        val existingEntry: HabitEntry? = entryViewModel.getEntryByDate(date)
-        if (existingEntry != null) {
-            existingEntry.habits.forEach { habitProgress ->
-                habitProgressMap[habitProgress.habit.id] = habitProgress.value
-            }
-        }
+        loadExistingEntryData(date, entryViewModel, habitProgressMap)
     }
 
-    fun save() {
-        val progressList = mutableListOf<HabitProgress>()
-        habitProgressMap.forEach { (habitId, value) ->
-            val habit = habits.find { it.id == habitId }
-            if (habit != null && value != null) {
-                progressList.add(HabitProgress(habit = habit, value = value))
-            }
-        }
-
-        val entry = HabitEntry(
-            date = date,
-            mood = selectedMood,
-            habits = progressList
-        )
+    // Handle saving the entry
+    fun saveEntry() {
+        val entry = createHabitEntry(date, selectedMood, habitProgressMap, habits)
         entryViewModel.saveEntry(entry)
-
-        navController.navigate(AppDestinations.HOME) {
-            popUpTo(AppDestinations.HOME) { inclusive = true }
-            launchSingleTop = true
-        }
+        navigateToHome(navController)
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
-                    }
-                },
-                actions = {
-                    TextButton(onClick = { save() }) {
-                        Text("Speichern")
-                    }
-                }
+            HabitSelectionTopBar(
+                onBackClick = { navController.popBackStack() },
+                onSaveClick = { saveEntry() }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                Text(
-                    text = "How was your day?",
-                    style = MaterialTheme.typography.headlineSmall
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Mood.values().reversed().forEach { moodItem ->
-                        MoodOption(
-                            icon = getIconForMood(moodItem),
-                            label = getLabelForMood(moodItem),
-                            mood = moodItem,
-                            selectedMood = selectedMood
-                        ) {
-                            selectedMood = it
-                        }
-                    }
-                }
-
-                habits.groupBy { it.category }.forEach { (category, habitGroup) ->
-                    HabitGroupCard(
-                        title = category ?: "General",
-                        onAddClick = {
-                            val categoryNameToPass = category ?: "General"
-                            navController.navigate(
-                                AppDestinations.buildAddHabitDetailsRoute(
-                                    categoryNameToPass
-                                )
-                            )
-                        }) {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            habitGroup.forEach { habit ->
-                                HabitButton(
-                                    habit = habit,
-                                    selected = habitProgressMap[habit.id] != null,
-                                    onClick = {
-                                        if (habit.type == HabitType.BINARY) {
-                                            habitProgressMap[habit.id] =
-                                                if (habitProgressMap[habit.id] == null) 1 else null
-                                        } else {
-                                            scalableHabitToEdit = habit
-                                            showScalableInputDialog = true
-                                        }
-                                    },
-                                    onLongClick = {
-                                        habitToDelete = habit
-                                        showDeleteDialog = true
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = {
-                        newCategoryNameInput = ""
-                        showNewCategoryDialog = true
-                    },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.IconSize)
+            // Main content
+            HabitSelectionContent(
+                selectedMood = selectedMood,
+                onMoodSelected = { selectedMood = it },
+                habits = habits,
+                habitProgressMap = habitProgressMap,
+                onHabitClick = { habit ->
+                    handleHabitClick(
+                        habit,
+                        habitProgressMap,
+                        { scalableHabitToEdit = it },
+                        { showScalableInputDialog = it }
                     )
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text("Add New Category")
+                },
+                onHabitLongClick = { habit ->
+                    habitToDelete = habit
+                    showDeleteDialog = true
+                },
+                onAddCategoryClick = {
+                    showNewCategoryDialog = true
+                },
+                onAddHabitToCategory = { category ->
+                    navController.navigate(AppDestinations.buildAddHabitDetailsRoute(category))
                 }
+            )
 
-            }
-
-            Box(
+            // Save FAB
+            SaveButton(
+                onClick = { saveEntry() },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 24.dp),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                FloatingActionButton(onClick = { save() }) {
-                    Icon(Icons.Default.Check, contentDescription = "Speichern")
-                }
-            }
+            )
 
-
+            // Delete Habit Dialog
             if (showDeleteDialog && habitToDelete != null) {
-                AlertDialog(
-                    onDismissRequest = {
+                DeleteHabitDialog(
+                    habit = habitToDelete!!,
+                    onDismiss = {
                         showDeleteDialog = false
                         habitToDelete = null
                     },
-                    title = { Text("Delete Habit") },
-                    text = { Text("Are you sure you want to delete '${habitToDelete?.name}'?") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                habitToDelete?.let {
-                                    habitProgressMap.remove(it.id)
-                                    habitViewModel.deleteHabit(it.toEntity())
-                                }
-                                showDeleteDialog = false
-                                habitToDelete = null
-                            }
-                        ) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                    onConfirm = {
+                        habitToDelete?.let {
+                            habitProgressMap.remove(it.id)
+                            habitViewModel.deleteHabit(it.toEntity())
                         }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = {
-                                showDeleteDialog = false
-                                habitToDelete = null
-                            }
-                        ) {
-                            Text("Cancel")
-                        }
+                        showDeleteDialog = false
+                        habitToDelete = null
                     }
                 )
             }
 
-
+            // New Category Dialog
             if (showNewCategoryDialog) {
-                var categoryNameError by remember { mutableStateOf<String?>(null) }
-                val existingCategories = remember(habits) {
-                    habits.mapNotNull { it.category?.lowercase() }.toSet()
-                }
-
-                AlertDialog(
-                    onDismissRequest = {
+                NewCategoryDialog(
+                    habits = habits,
+                    onDismiss = { showNewCategoryDialog = false },
+                    onConfirm = { categoryName ->
                         showNewCategoryDialog = false
-                        newCategoryNameInput = ""
-                        categoryNameError = null
-                    },
-                    title = { Text("New Habit Category") },
-                    text = {
-                        Column {
-                            OutlinedTextField(
-                                value = newCategoryNameInput,
-                                onValueChange = {
-                                    newCategoryNameInput = it
-                                    if (categoryNameError != null) {
-                                        categoryNameError = null
-                                    }
-                                },
-                                label = { Text("Category Name") },
-                                singleLine = true,
-                                isError = categoryNameError != null
-                            )
-                            if (categoryNameError != null) {
-                                Text(
-                                    text = categoryNameError!!,
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                val trimmedName = newCategoryNameInput.trim()
-                                if (trimmedName.isBlank()) {
-                                    categoryNameError = "Category name cannot be empty."
-                                } else if (existingCategories.contains(trimmedName.lowercase())) {
-                                    categoryNameError = "'$trimmedName' already exists."
-                                } else {
-                                    categoryNameError = null
-                                    showNewCategoryDialog = false
-                                    navController.navigate(
-                                        AppDestinations.buildAddHabitDetailsRoute(trimmedName)
-                                    )
-                                    newCategoryNameInput = ""
-                                }
-                            },
-                            enabled = newCategoryNameInput.isNotBlank()
-                        ) {
-                            Text("Create & Add Habit")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = {
-                                showNewCategoryDialog = false
-                                newCategoryNameInput = ""
-                                categoryNameError = null
-                            }
-                        ) {
-                            Text("Cancel")
-                        }
+                        navController.navigate(
+                            AppDestinations.buildAddHabitDetailsRoute(categoryName)
+                        )
                     }
                 )
             }
 
+            // Scalable Habit Input Dialog
             if (showScalableInputDialog && scalableHabitToEdit != null) {
-                val scaleOptions =
-                    remember { listOf(null to "None", 1 to "Low", 2 to "Med", 3 to "High") }
-                val currentLevel = habitProgressMap[scalableHabitToEdit?.id]
-
-                AlertDialog(
-                    onDismissRequest = {
+                ScalableHabitDialog(
+                    habit = scalableHabitToEdit!!,
+                    currentLevel = habitProgressMap[scalableHabitToEdit?.id],
+                    onDismiss = {
                         showScalableInputDialog = false
                         scalableHabitToEdit = null
                     },
-                    // Provide content in the TRAILING LAMBDA
-                    content = {
-                        SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp, bottom = 8.dp) // Add some padding
-                        ) {
-                            scaleOptions.forEachIndexed { index, (levelValue, levelLabel) ->
-                                SegmentedButton(
-                                    shape = SegmentedButtonDefaults.itemShape(
-                                        index = index,
-                                        count = scaleOptions.size
-                                    ),
-                                    onClick = {
-                                        scalableHabitToEdit?.let {
-                                            habitProgressMap[it.id] = levelValue
-                                        }
-                                        showScalableInputDialog = false
-                                        scalableHabitToEdit = null
-                                    },
-                                    selected = (levelValue == currentLevel)
-                                ) {
-                                    Text(levelLabel)
-                                }
-                            }
+                    onLevelSelect = { levelValue ->
+                        scalableHabitToEdit?.let {
+                            habitProgressMap[it.id] = levelValue
                         }
-                    } // End of content lambda
-                ) // End AlertDialog call
+                        showScalableInputDialog = false
+                        scalableHabitToEdit = null
+                    }
+                )
             }
-
-
         }
     }
 }
 
+@Composable
+private fun HabitSelectionContent(
+    selectedMood: Mood,
+    onMoodSelected: (Mood) -> Unit,
+    habits: List<Habit>,
+    habitProgressMap: Map<Int, Int?>,
+    onHabitClick: (Habit) -> Unit,
+    onHabitLongClick: (Habit) -> Unit,
+    onAddCategoryClick: () -> Unit,
+    onAddHabitToCategory: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 120.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // Mood selection section
+        Text(
+            text = "How was your day?",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        MoodSelectionRow(
+            selectedMood = selectedMood,
+            onMoodSelected = onMoodSelected
+        )
+
+        // Habit categories section
+        HabitCategoriesSection(
+            habits = habits,
+            habitProgressMap = habitProgressMap,
+            onHabitClick = onHabitClick,
+            onHabitLongClick = onHabitLongClick,
+            onAddHabitToCategory = onAddHabitToCategory
+        )
+
+        // Add category button
+        Spacer(modifier = Modifier.height(24.dp))
+        AddCategoryButton(
+            onClick = onAddCategoryClick,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+    }
+}
+
+@Composable
+private fun MoodSelectionRow(
+    selectedMood: Mood,
+    onMoodSelected: (Mood) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Mood.values().reversed().forEach { moodItem ->
+            MoodOption(
+                icon = getIconForMood(moodItem),
+                label = getLabelForMood(moodItem),
+                mood = moodItem,
+                selectedMood = selectedMood
+            ) {
+                onMoodSelected(it)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HabitCategoriesSection(
+    habits: List<Habit>,
+    habitProgressMap: Map<Int, Int?>,
+    onHabitClick: (Habit) -> Unit,
+    onHabitLongClick: (Habit) -> Unit,
+    onAddHabitToCategory: (String) -> Unit
+) {
+    habits.groupBy { it.category }.forEach { (category, habitGroup) ->
+        HabitGroupCard(
+            title = category ?: "General",
+            onAddClick = {
+                val categoryNameToPass = category ?: "General"
+                onAddHabitToCategory(categoryNameToPass)
+            }
+        ) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                habitGroup.forEach { habit ->
+                    HabitButton(
+                        habit = habit,
+                        selected = habitProgressMap[habit.id] != null,
+                        onClick = { onHabitClick(habit) },
+                        onLongClick = { onHabitLongClick(habit) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddCategoryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Icon(
+            Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.size(ButtonDefaults.IconSize)
+        )
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+        Text("Add New Category")
+    }
+}
+
+@Composable
+private fun SaveButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        FloatingActionButton(onClick = onClick) {
+            Icon(Icons.Default.Check, contentDescription = "Save")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HabitSelectionTopBar(
+    onBackClick: () -> Unit,
+    onSaveClick: () -> Unit
+) {
+    TopAppBar(
+        title = {},
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        },
+        actions = {
+            TextButton(onClick = onSaveClick) {
+                Text("Save")
+            }
+        }
+    )
+}
+
+@Composable
+private fun DeleteHabitDialog(
+    habit: Habit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Habit") },
+        text = { Text("Are you sure you want to delete '${habit.name}'?") },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm
+            ) {
+                Text("Delete", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun NewCategoryDialog(
+    habits: List<Habit>,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var newCategoryNameInput by remember { mutableStateOf("") }
+    var categoryNameError by remember { mutableStateOf<String?>(null) }
+    
+    val existingCategories = remember(habits) {
+        habits.mapNotNull { it.category?.lowercase() }.toSet()
+    }
+
+    AlertDialog(
+        onDismissRequest = {
+            onDismiss()
+            categoryNameError = null
+        },
+        title = { Text("New Habit Category") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = newCategoryNameInput,
+                    onValueChange = {
+                        newCategoryNameInput = it
+                        if (categoryNameError != null) {
+                            categoryNameError = null
+                        }
+                    },
+                    label = { Text("Category Name") },
+                    singleLine = true,
+                    isError = categoryNameError != null
+                )
+                if (categoryNameError != null) {
+                    Text(
+                        text = categoryNameError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val trimmedName = newCategoryNameInput.trim()
+                    if (trimmedName.isBlank()) {
+                        categoryNameError = "Category name cannot be empty."
+                    } else if (existingCategories.contains(trimmedName.lowercase())) {
+                        categoryNameError = "'$trimmedName' already exists."
+                    } else {
+                        categoryNameError = null
+                        onConfirm(trimmedName)
+                        newCategoryNameInput = ""
+                    }
+                },
+                enabled = newCategoryNameInput.isNotBlank()
+            ) {
+                Text("Create & Add Habit")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    newCategoryNameInput = ""
+                    categoryNameError = null
+                }
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ScalableHabitDialog(
+    habit: Habit,
+    currentLevel: Int?,
+    onDismiss: () -> Unit,
+    onLevelSelect: (Int?) -> Unit
+) {
+    val scaleOptions = remember { listOf(null to "None", 1 to "Low", 2 to "Med", 3 to "High") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        content = {
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 8.dp)
+            ) {
+                scaleOptions.forEachIndexed { index, (levelValue, levelLabel) ->
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = scaleOptions.size
+                        ),
+                        onClick = { onLevelSelect(levelValue) },
+                        selected = (levelValue == currentLevel)
+                    ) {
+                        Text(levelLabel)
+                    }
+                }
+            }
+        }
+    )
+}
+
+// Keep the existing HabitGroupCard and HabitButton composables
 @Composable
 fun HabitGroupCard(
     title: String,
@@ -445,40 +548,29 @@ fun HabitButton(
     val context = LocalContext.current
     LaunchedEffect(Unit) { MaterialSymbolsRepository.preload(context) }
 
-    // Define colors for selected/unselected states
     val selectedContainerColor = MaterialTheme.colorScheme.primary
-    // Use a subtle background for unselected state for better visual grouping if desired
-    val unselectedContainerColor =
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f) // Or Color.Transparent
+    val unselectedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
     val selectedContentColor = MaterialTheme.colorScheme.onPrimary
-    val unselectedContentColor =
-        MaterialTheme.colorScheme.onSurfaceVariant // Color for the icon itself
+    val unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // Apply combinedClickable to the Column, making the whole unit interactive
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            // Make the column itself detect clicks and long clicks
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            // Add padding *around* the clickable area if needed,
-            // or inside the column before the elements for spacing
             .padding(vertical = 4.dp, horizontal = 4.dp)
     ) {
-        // Use a Box to control the background, shape, and size of the icon area
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(56.dp) // Visual size of the button background
+                .size(56.dp)
                 .background(
                     color = if (selected) selectedContainerColor else unselectedContainerColor,
-                    // Use a shape consistent with IconButton, e.g., CircleShape or rounded corner
-                    shape = MaterialTheme.shapes.extraLarge // Often works well for ~56dp icons
+                    shape = MaterialTheme.shapes.extraLarge
                 )
         ) {
-            // Icon Text - color is now set directly based on selection state
             val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(
                 habit.iconKey,
                 fallbackSymbolName = "question_mark"
@@ -486,8 +578,8 @@ fun HabitButton(
             Text(
                 text = symbolChar,
                 fontFamily = MaterialSymbols,
-                fontSize = 32.sp, // Adjust if needed
-                color = if (selected) selectedContentColor else unselectedContentColor // Explicitly set icon color
+                fontSize = 32.sp,
+                color = if (selected) selectedContentColor else unselectedContentColor
             )
         }
 
@@ -496,9 +588,62 @@ fun HabitButton(
         Text(
             text = habit.name,
             fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurface // Use a standard text color
-            // Optional: Change text color based on selection too
-            // color = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current
+            color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+// Helper functions to keep the main composable cleaner
+private fun loadExistingEntryData(
+    date: LocalDate,
+    entryViewModel: HabitEntryViewModel,
+    habitProgressMap: MutableMap<Int, Int?>
+) {
+    habitProgressMap.clear()
+    val existingEntry: HabitEntry? = entryViewModel.getEntryByDate(date)
+    existingEntry?.habits?.forEach { habitProgress ->
+        habitProgressMap[habitProgress.habit.id] = habitProgress.value
+    }
+}
+
+private fun createHabitEntry(
+    date: LocalDate,
+    mood: Mood,
+    habitProgressMap: Map<Int, Int?>,
+    habits: List<Habit>
+): HabitEntry {
+    val progressList = mutableListOf<HabitProgress>()
+    habitProgressMap.forEach { (habitId, value) ->
+        val habit = habits.find { it.id == habitId }
+        if (habit != null && value != null) {
+            progressList.add(HabitProgress(habit = habit, value = value))
+        }
+    }
+    
+    return HabitEntry(
+        date = date,
+        mood = mood,
+        habits = progressList
+    )
+}
+
+private fun navigateToHome(navController: NavController) {
+    navController.navigate(AppDestinations.HOME) {
+        popUpTo(AppDestinations.HOME) { inclusive = true }
+        launchSingleTop = true
+    }
+}
+
+private fun handleHabitClick(
+    habit: Habit,
+    habitProgressMap: MutableMap<Int, Int?>,
+    setHabitToEdit: (Habit?) -> Unit,
+    showDialog: (Boolean) -> Unit
+) {
+    if (habit.type == HabitType.BINARY) {
+        habitProgressMap[habit.id] = if (habitProgressMap[habit.id] == null) 1 else null
+    } else {
+        setHabitToEdit(habit)
+        showDialog(true)
     }
 }
