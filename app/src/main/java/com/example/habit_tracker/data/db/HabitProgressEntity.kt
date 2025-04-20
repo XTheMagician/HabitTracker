@@ -7,31 +7,27 @@ import androidx.room.Index
 
 @Entity(
     tableName = "habit_progress",
-    // Define composite primary key
     primaryKeys = ["entryDate", "habitId"],
-    // Define foreign keys to link to habits and entries
     foreignKeys = [
         ForeignKey(
             entity = HabitEntryEntity::class,
-            parentColumns = ["date"], // PK of HabitEntryEntity
+            parentColumns = ["date"],
             childColumns = ["entryDate"],
-            onDelete = ForeignKey.CASCADE // If an entry is deleted, delete associated progress
+            onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
             entity = HabitEntity::class,
-            parentColumns = ["id"], // PK of HabitEntity
+            parentColumns = ["id"],
             childColumns = ["habitId"],
-            onDelete = ForeignKey.CASCADE // If a habit is deleted, delete associated progress
+            onDelete = ForeignKey.CASCADE
         )
     ],
-    // Add indices for faster lookups
     indices = [Index("entryDate"), Index("habitId")]
 )
 data class HabitProgressEntity(
-    val entryDate: String, // Foreign key to HabitEntryEntity.date
-    val habitId: Int,      // Foreign key to HabitEntity.id
+    val entryDate: String,
+    val habitId: Int,
 
-    // Store the scalable value as Int?, null for binary habits or not done
     @ColumnInfo(name = "progress_value", defaultValue = "NULL")
     val value: Int? = null
 )

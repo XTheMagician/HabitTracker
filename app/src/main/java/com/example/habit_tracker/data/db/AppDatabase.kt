@@ -14,39 +14,36 @@ import kotlinx.coroutines.launch
 
 object DefaultHabits {
     val list = listOf(
-        // Freetime
         HabitEntity(
             name = "Read",
-            iconName = "menu_book", // Or "auto_stories"
+            iconName = "menu_book",
             category = "Freetime",
             type = HabitType.BINARY
         ),
         HabitEntity(
             name = "Gaming",
-            iconName = "sports_esports", // Or "stadia_controller"
+            iconName = "sports_esports",
             category = "Freetime",
-            type = HabitType.SCALE // Scalable as requested
+            type = HabitType.SCALE
         ),
         HabitEntity(
             name = "Movie",
-            iconName = "movie", // Or "theaters"
+            iconName = "movie",
             category = "Freetime",
             type = HabitType.BINARY
         ),
         HabitEntity(
             name = "Datenight",
-            iconName = "favorite", // Or "restaurant", "local_bar"
+            iconName = "favorite",
             category = "Freetime",
             type = HabitType.BINARY
         ),
         HabitEntity(
             name = "Trip",
-            iconName = "explore", // Or "flight_takeoff", "directions_car"
+            iconName = "explore",
             category = "Freetime",
             type = HabitType.BINARY
         ),
-
-        // Household
         HabitEntity(
             name = "Groceries",
             iconName = "shopping_cart",
@@ -55,7 +52,7 @@ object DefaultHabits {
         ),
         HabitEntity(
             name = "Cook",
-            iconName = "soup_kitchen", // Or "restaurant_menu", "outdoor_grill"
+            iconName = "soup_kitchen",
             category = "Household",
             type = HabitType.BINARY
         ),
@@ -71,69 +68,63 @@ object DefaultHabits {
             category = "Household",
             type = HabitType.BINARY
         ),
-
-        // Work
         HabitEntity(
             name = "Study",
-            iconName = "school", // Or "menu_book"
+            iconName = "school",
             category = "Work",
-            type = HabitType.SCALE // Scalable as requested
+            type = HabitType.SCALE
         ),
         HabitEntity(
             name = "Take a Break",
-            iconName = "free_breakfast", // Or "self_improvement", "coffee"
+            iconName = "free_breakfast",
             category = "Work",
-            type = HabitType.SCALE // Scalable as requested
+            type = HabitType.SCALE
         ),
-
-        // Health
         HabitEntity(
             name = "Sleep",
-            iconName = "bed", // Or "bedtime", "hotel"
+            iconName = "bed",
             category = "Health",
-            type = HabitType.SCALE // Scalable (duration) as requested
+            type = HabitType.SCALE
         ),
         HabitEntity(
             name = "Sleep Quality",
-            iconName = "star", // Or "sentiment_satisfied", "thumb_up"
+            iconName = "star",
             category = "Health",
-            type = HabitType.SCALE // Scalable (rating 1-5?) as requested
+            type = HabitType.SCALE
         ),
         HabitEntity(
             name = "Sport",
-            iconName = "fitness_center", // Or "directions_run", "sports_soccer"
+            iconName = "fitness_center",
             category = "Health",
             type = HabitType.BINARY
         ),
         HabitEntity(
             name = "Eat Healthy",
-            iconName = "nutrition", // Or "restaurant", "local_florist" (looks like veg)
+            iconName = "nutrition",
             category = "Health",
             type = HabitType.BINARY
         ),
         HabitEntity(
             name = "Eat Veggie",
-            iconName = "eco", // Or "grass"
+            iconName = "eco",
             category = "Health",
             type = HabitType.BINARY
         ),
         HabitEntity(
             name = "Wake Up Early",
-            iconName = "wb_sunny", // Or "alarm"
+            iconName = "wb_sunny",
             category = "Health",
             type = HabitType.BINARY
         ),
         HabitEntity(
             name = "Drink Alcohol",
-            iconName = "local_bar", // Or "wine_bar", "no_drinks" (if tracking avoidance)
+            iconName = "local_bar",
             category = "Health",
-            type = HabitType.BINARY // Track if *any* alcohol was consumed? Or change to SCALE for quantity?
+            type = HabitType.BINARY
         ),
-
-        // Social
         HabitEntity(
             name = "Party",
-            iconName = "celebration", // Or "liquor"
+            iconName = "celebration",
             category = "Social",
             type = HabitType.BINARY
         ),
@@ -145,10 +136,10 @@ object DefaultHabits {
         ),
         HabitEntity(
             name = "See Family",
-            iconName = "people", // Or "family_restroom", "escalator_warning"
+            iconName = "people",
             category = "Social",
             type = HabitType.BINARY
-        ),
+        )
     )
 }
 
@@ -156,9 +147,9 @@ object DefaultHabits {
     entities = [
         HabitEntryEntity::class,
         HabitEntity::class,
-        HabitProgressEntity::class // <<< THIS MUST BE PRESENT!!!
+        HabitProgressEntity::class
     ],
-    version = 4, // Version looks correct
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

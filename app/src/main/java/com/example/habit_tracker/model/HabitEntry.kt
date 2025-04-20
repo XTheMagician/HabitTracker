@@ -11,31 +11,12 @@ enum class Mood {
 data class HabitEntry(
     val date: LocalDate,
     val mood: Mood,
-    // Holds the detailed progress for each habit in this entry
-    val habits: List<HabitProgress> // Correctly holds HabitProgress list
+    val habits: List<HabitProgress>
 )
 
-// --- Corrected toEntity() function ---
 fun HabitEntry.toEntity(): HabitEntryEntity {
-    // Convert only the fields that exist in HabitEntryEntity
     return HabitEntryEntity(
-        date = this.date.format(DateTimeFormatter.ISO_DATE), // Store date as ISO String
-        mood = this.mood.name // Store mood enum as its String name
-        // DO NOT include habitIds here, it was removed from HabitEntryEntity
+        date = this.date.format(DateTimeFormatter.ISO_DATE),
+        mood = this.mood.name
     )
 }
-
-// --- Helper functions for Mood (Assuming they exist here or elsewhere) ---
-
-// You'll need functions to convert Mood enum to/from the stored String if needed,
-// and potentially functions to get icons/labels if they are defined here.
-// Example placeholders:
-
-// fun getMoodFromString(moodName: String?): Mood {
-//    return Mood.values().firstOrNull { it.name == moodName } ?: Mood.NEUTRAL
-// }
-
-// fun getIconForMood(mood: Mood): ImageVector { ... }
-// fun getLabelForMood(mood: Mood): String { ... }
-
-// --- (Keep HabitProgress data class definition if it's in this file) ---

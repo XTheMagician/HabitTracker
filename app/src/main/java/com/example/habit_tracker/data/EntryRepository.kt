@@ -10,7 +10,7 @@ object EntryRepository {
 
     fun addEntry(entry: HabitEntry) {
         entries.removeAll { it.date == entry.date }
-        entries.add(0, entry) // add newest on top
+        entries.add(0, entry)
     }
 
     fun getEntries(): List<HabitEntry> {
