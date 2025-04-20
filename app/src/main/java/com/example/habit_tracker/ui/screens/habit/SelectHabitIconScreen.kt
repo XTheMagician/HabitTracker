@@ -1,6 +1,5 @@
-package com.example.habit_tracker.ui.screens.habit // Adjust package if needed
+package com.example.habit_tracker.ui.screens.habit
 
-// *** Import the Repository and Font ***
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,26 +63,20 @@ fun SelectHabitIconScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // State for the search query
     var searchQuery by remember { mutableStateOf("") }
-    // State for the selected icon's name (String key)
     var selectedIconName by remember { mutableStateOf<String?>(null) }
-    // State to hold the loaded codepoints map
     var codepoints by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    // State to track if loading is complete (optional, for showing a loading indicator)
     var isLoading by remember { mutableStateOf(true) }
 
-    // Load codepoints when the screen is first composed
-    LaunchedEffect(key1 = Unit) { // key1 = Unit ensures it runs only once
+    LaunchedEffect(key1 = Unit) {
         isLoading = true
         codepoints = MaterialSymbolsRepository.getCodepoints(context)
         isLoading = false
     }
 
-    // Filter the icon *names* based on the search query
     val filteredIconNames = remember(searchQuery, codepoints) {
         if (searchQuery.isBlank()) {
-            codepoints.keys.sorted().toList() // Show all names, sorted alphabetically
+            codepoints.keys.sorted().toList()
         } else {
             codepoints.keys.filter { name ->
                 name.contains(searchQuery, ignoreCase = true)
@@ -103,20 +96,17 @@ fun SelectHabitIconScreen(
             )
         },
         floatingActionButton = {
-            // Show FAB only if an icon is selected AND codepoints are loaded
             if (selectedIconName != null && !isLoading) {
                 FloatingActionButton(
                     onClick = {
-                        // Create the HabitEntity and save it
                         val newHabit = HabitEntity(
                             name = habitName,
-                            iconName = selectedIconName!!, // Save the NAME
+                            iconName = selectedIconName!!,
                             type = habitType,
                             category = category
                         )
                         habitViewModel.addHabit(newHabit)
 
-                        // Pop back stack to the previous screen (HabitSelection)
                         navController.popBackStack(
                             route = AppDestinations.HABIT_SELECTION_ROUTE,
                             inclusive = false
@@ -134,27 +124,24 @@ fun SelectHabitIconScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                label = { Text("Search Symbols") }, // Updated label
+                label = { Text("Search Symbols") },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = "Search")
                 },
                 singleLine = true
             )
 
-            // Loading Indicator (Optional)
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
-                // Grid of Icons
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 72.dp),
                     modifier = Modifier.fillMaxSize(),
@@ -163,30 +150,27 @@ fun SelectHabitIconScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(filteredIconNames, key = { it }) { iconName ->
-                        // Get the character representation for the symbol name
-                        // Use the safe version with a fallback
                         val symbolChar = MaterialSymbolsRepository.getSymbolCharSafe(iconName)
 
-                        SymbolGridItem( // Changed to SymbolGridItem
+                        SymbolGridItem(
                             symbolName = iconName,
-                            symbolChar = symbolChar, // Pass the character string
+                            symbolChar = symbolChar,
                             isSelected = iconName == selectedIconName,
                             onClick = {
-                                selectedIconName = iconName // Update selected state
+                                selectedIconName = iconName
                             }
                         )
                     }
                 }
-            } // End else (not loading)
-        } // End Column
-    } // End Scaffold
+            }
+        }
+    }
 }
 
-// Composable for a single item in the symbol grid (Modified from IconGridItem)
 @Composable
 fun SymbolGridItem(
     symbolName: String,
-    symbolChar: String, // Changed from iconVector
+    symbolChar: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -205,14 +189,11 @@ fun SymbolGridItem(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        // *** Use Text composable with the MaterialSymbols font ***
         Text(
-            text = symbolChar, // Display the character(s) for the symbol
-            fontFamily = MaterialSymbols, // Apply the custom font
-            fontSize = 36.sp, // Adjust size as needed
+            text = symbolChar,
+            fontFamily = MaterialSymbols,
+            fontSize = 36.sp,
             color = contentColor
-            // Optional: Adjust weight, grade etc. if needed using fontVariationSettings
-            // fontWeight = FontWeight.Normal // Example
         )
     }
 }

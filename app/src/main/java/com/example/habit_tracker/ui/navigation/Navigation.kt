@@ -17,7 +17,6 @@ import com.example.habit_tracker.ui.screens.habit.HabitSelectionScreen
 import com.example.habit_tracker.ui.screens.habit.SelectHabitIconScreen
 import com.example.habit_tracker.ui.screens.home.HomeScreen
 import com.example.habit_tracker.ui.screens.mood.AddEntryScreen
-// Import the placeholder screen
 import com.example.habit_tracker.ui.screens.placeholder.PlaceholderScreen
 import com.example.habit_tracker.ui.screens.stats.StatisticsScreen
 import com.example.habit_tracker.viewmodel.HabitEntryViewModel
@@ -31,8 +30,8 @@ object AppDestinations {
     const val ADD_HABIT_DETAILS = "add_habit_details"
     const val SELECT_HABIT_ICON = "select_habit_icon"
     const val STATISTICS = "statistics"
-    const val CALENDAR = "calendar" // Added
-    const val MORE = "more"         // Added
+    const val CALENDAR = "calendar"
+    const val MORE = "more"
 
     const val HABIT_SELECTION_ROUTE = "$HABIT_SELECTION/{mood}/{date}"
     const val ADD_HABIT_DETAILS_ROUTE = "$ADD_HABIT_DETAILS/{category}"
@@ -66,7 +65,6 @@ fun AppNavigation() {
             StatisticsScreen(navController = navController)
         }
 
-        // --- Add composable destinations for the new routes ---
         composable(route = AppDestinations.CALENDAR) {
             PlaceholderScreen(navController = navController, screenName = "Calendar")
         }
@@ -74,7 +72,6 @@ fun AppNavigation() {
         composable(route = AppDestinations.MORE) {
             PlaceholderScreen(navController = navController, screenName = "More")
         }
-        // --- End of new routes ---
 
         composable(
             route = AppDestinations.HABIT_SELECTION_ROUTE,

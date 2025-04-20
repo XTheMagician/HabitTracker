@@ -85,19 +85,16 @@ fun HabitSelectionScreen(
     val habits = habitViewModel.habits.collectAsState().value
     var selectedMood by remember { mutableStateOf(mood) }
 
-    // Dialog states
     var showDeleteDialog by remember { mutableStateOf(false) }
     var habitToDelete by remember { mutableStateOf<Habit?>(null) }
     var showNewCategoryDialog by remember { mutableStateOf(false) }
     var showScalableInputDialog by remember { mutableStateOf(false) }
     var scalableHabitToEdit by remember { mutableStateOf<Habit?>(null) }
 
-    // Load existing entry data if available
     LaunchedEffect(date) {
         loadExistingEntryData(date, entryViewModel, habitProgressMap)
     }
 
-    // Handle saving the entry
     fun saveEntry() {
         val entry = createHabitEntry(date, selectedMood, habitProgressMap, habits)
         entryViewModel.saveEntry(entry)
@@ -118,7 +115,6 @@ fun HabitSelectionScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Main content
             HabitSelectionContent(
                 selectedMood = selectedMood,
                 onMoodSelected = { selectedMood = it },
@@ -144,7 +140,6 @@ fun HabitSelectionScreen(
                 }
             )
 
-            // Save FAB
             SaveButton(
                 onClick = { saveEntry() },
                 modifier = Modifier
@@ -152,7 +147,6 @@ fun HabitSelectionScreen(
                     .padding(bottom = 24.dp),
             )
 
-            // Delete Habit Dialog
             if (showDeleteDialog && habitToDelete != null) {
                 DeleteHabitDialog(
                     habit = habitToDelete!!,
@@ -171,7 +165,6 @@ fun HabitSelectionScreen(
                 )
             }
 
-            // New Category Dialog
             if (showNewCategoryDialog) {
                 NewCategoryDialog(
                     habits = habits,
@@ -185,7 +178,6 @@ fun HabitSelectionScreen(
                 )
             }
 
-            // Scalable Habit Input Dialog
             if (showScalableInputDialog && scalableHabitToEdit != null) {
                 ScalableHabitDialog(
                     habit = scalableHabitToEdit!!,
@@ -229,7 +221,6 @@ private fun HabitSelectionContent(
             .padding(bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Mood selection section
         Text(
             text = "How was your day?",
             style = MaterialTheme.typography.headlineSmall
@@ -240,7 +231,6 @@ private fun HabitSelectionContent(
             onMoodSelected = onMoodSelected
         )
 
-        // Habit categories section
         HabitCategoriesSection(
             habits = habits,
             habitProgressMap = habitProgressMap,
@@ -249,7 +239,6 @@ private fun HabitSelectionContent(
             onAddHabitToCategory = onAddHabitToCategory
         )
 
-        // Add category button
         Spacer(modifier = Modifier.height(24.dp))
         AddCategoryButton(
             onClick = onAddCategoryClick,
@@ -507,7 +496,6 @@ private fun ScalableHabitDialog(
     )
 }
 
-// Keep the existing HabitGroupCard and HabitButton composables
 @Composable
 fun HabitGroupCard(
     title: String,
@@ -594,7 +582,6 @@ fun HabitButton(
     }
 }
 
-// Helper functions to keep the main composable cleaner
 private suspend fun loadExistingEntryData(
     date: LocalDate,
     entryViewModel: HabitEntryViewModel,

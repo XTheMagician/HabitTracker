@@ -38,7 +38,6 @@ fun HomeScreen(
     habitEntryViewModel: HabitEntryViewModel = viewModel(),
     habitViewModel: HabitViewModel = viewModel()
 ) {
-
     val currentYearMonth by habitEntryViewModel.currentYearMonth.collectAsStateWithLifecycle()
     val entries by habitEntryViewModel.entriesForCurrentMonth.collectAsStateWithLifecycle()
 
@@ -48,47 +47,68 @@ fun HomeScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                navController.navigate("addEntry")
-            }) {
-                Text("+")
-            }
+            AddEntryButton(onClick = { navController.navigate("addEntry") })
         },
         bottomBar = {
             BottomNavigationBar(navController)
         }
     ) { innerPadding ->
-        Column(
+        HomeContent(
+            currentYearMonth = currentYearMonth,
+            monthYearFormatter = monthYearFormatter,
+            entries = entries,
+            onPreviousMonth = habitEntryViewModel::showPreviousMonth,
+            onNextMonth = habitEntryViewModel::showNextMonth,
+            onDeleteEntry = { date -> habitEntryViewModel.deleteEntry(date) },
+            onEditEntry = { date, mood ->
+                navController.navigate("habitSelection/$mood/$date")
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(8.dp)
-        ) {
-            MonthSwitcher(
-                currentMonth = currentYearMonth,
-                monthYearFormatter = monthYearFormatter,
-                onPreviousMonth = habitEntryViewModel::showPreviousMonth,
-                onNextMonth = habitEntryViewModel::showNextMonth,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
-            )
+        )
+    }
+}
 
-            EntryList(
-                entries = entries, // Pass the state variable holding the filtered list
-                onDelete = { entryToDelete -> // Define the delete action here
-                    habitEntryViewModel.deleteEntry(entryToDelete.date)
-                },
-                onEdit = { entryToEdit -> // Define the edit action here
-                    val moodString = entryToEdit.mood.name
-                    val dateString = entryToEdit.date.toString()
-                    // Use the navController available in HomeScreen to navigate
-                    navController.navigate("habitSelection/$moodString/$dateString")
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f) // Use weight modifier here if needed
-                    .padding(horizontal = 16.dp) // Apply padding as needed
-            )
-        }
+@Composable
+private fun HomeContent(
+    currentYearMonth: YearMonth,
+    monthYearFormatter: DateTimeFormatter,
+    entries: List<com.example.habit_tracker.model.HabitEntry>,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onDeleteEntry: (java.time.LocalDate) -> Unit,
+    onEditEntry: (String, String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        MonthSwitcher(
+            currentMonth = currentYearMonth,
+            monthYearFormatter = monthYearFormatter,
+            onPreviousMonth = onPreviousMonth,
+            onNextMonth = onNextMonth,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+        )
+
+        EntryList(
+            entries = entries,
+            onDelete = { entry -> onDeleteEntry(entry.date) },
+            onEdit = { entry ->
+                onEditEntry(entry.date.toString(), entry.mood.name)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 16.dp)
+        )
+    }
+}
+
+@Composable
+private fun AddEntryButton(onClick: () -> Unit) {
+    FloatingActionButton(onClick = onClick) {
+        Text("+")
     }
 }
 
@@ -114,9 +134,8 @@ fun MonthSwitcher(
 
         Text(
             text = currentMonth.format(monthYearFormatter)
-                // Capitalize the first letter of the month
                 .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-            style = MaterialTheme.typography.headlineSmall, // Or another appropriate style
+            style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center
         )
 

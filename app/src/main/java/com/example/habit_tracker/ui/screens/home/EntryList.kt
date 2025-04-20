@@ -13,10 +13,10 @@ import com.example.habit_tracker.ui.components.EntryItem
 
 @Composable
 fun EntryList(
-    entries: List<HabitEntry>,          // <-- Takes the list directly
-    onDelete: (HabitEntry) -> Unit,     // <-- Callback for delete action
-    onEdit: (HabitEntry) -> Unit,       // <-- Callback for edit action
-    modifier: Modifier = Modifier       // <-- Standard modifier parameter
+    entries: List<HabitEntry>,
+    onDelete: (HabitEntry) -> Unit,
+    onEdit: (HabitEntry) -> Unit,
+    modifier: Modifier = Modifier
 ) {
 
     LazyColumn(
