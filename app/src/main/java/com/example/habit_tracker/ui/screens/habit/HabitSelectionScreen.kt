@@ -84,7 +84,7 @@ fun HabitSelectionScreen(
     val habitProgressMap = remember { mutableStateMapOf<Int, Int?>() }
     val habits = habitViewModel.habits.collectAsState().value
     var selectedMood by remember { mutableStateOf(mood) }
-    
+
     // Dialog states
     var showDeleteDialog by remember { mutableStateOf(false) }
     var habitToDelete by remember { mutableStateOf<Habit?>(null) }
@@ -220,7 +220,7 @@ private fun HabitSelectionContent(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -404,7 +404,7 @@ private fun NewCategoryDialog(
 ) {
     var newCategoryNameInput by remember { mutableStateOf("") }
     var categoryNameError by remember { mutableStateOf<String?>(null) }
-    
+
     val existingCategories = remember(habits) {
         habits.mapNotNull { it.category?.lowercase() }.toSet()
     }
@@ -472,6 +472,7 @@ private fun NewCategoryDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScalableHabitDialog(
     habit: Habit,
@@ -594,7 +595,7 @@ fun HabitButton(
 }
 
 // Helper functions to keep the main composable cleaner
-private fun loadExistingEntryData(
+private suspend fun loadExistingEntryData(
     date: LocalDate,
     entryViewModel: HabitEntryViewModel,
     habitProgressMap: MutableMap<Int, Int?>
@@ -619,7 +620,7 @@ private fun createHabitEntry(
             progressList.add(HabitProgress(habit = habit, value = value))
         }
     }
-    
+
     return HabitEntry(
         date = date,
         mood = mood,

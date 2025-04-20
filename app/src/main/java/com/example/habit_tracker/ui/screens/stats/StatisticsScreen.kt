@@ -2,6 +2,7 @@ package com.example.habit_tracker.ui.screens.stats
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,7 +44,7 @@ fun StatisticsScreen(
     statisticsViewModel: StatisticsViewModel = viewModel()
 ) {
     val currentMode by statisticsViewModel.statisticsMode.collectAsStateWithLifecycle()
-    
+
     Scaffold(
         bottomBar = { BottomNavigationBar(navController) }
     ) { innerPadding ->
@@ -72,24 +73,24 @@ private fun StatisticsContent(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    
+
     Column(
         modifier = modifier
-            .weight(1f)
+            .fillMaxHeight()
             .verticalScroll(scrollState)
             .padding(horizontal = 16.dp)
     ) {
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         TimePeriodSelector(viewModel = viewModel, currentMode = currentMode)
-        
+
         when (currentMode) {
             StatisticsMode.MONTHLY -> MonthlyStatistics(viewModel = viewModel)
             StatisticsMode.YEARLY -> YearlyStatistics(viewModel = viewModel)
         }
-        
+
         CommonStatistics(viewModel = viewModel)
-        
+
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
@@ -104,7 +105,7 @@ private fun TimePeriodSelector(
     val monthYearFormatter = remember(Locale.getDefault()) {
         DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())
     }
-    
+
     when (currentMode) {
         StatisticsMode.MONTHLY -> {
             MonthSwitcher(
@@ -115,6 +116,7 @@ private fun TimePeriodSelector(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
+
         StatisticsMode.YEARLY -> {
             YearSwitcher(
                 currentYear = currentYear,
@@ -131,17 +133,17 @@ private fun MonthlyStatistics(viewModel: StatisticsViewModel) {
     val currentYearMonth by viewModel.currentYearMonth.collectAsStateWithLifecycle()
     val moodSummary by viewModel.moodSummaryData.collectAsStateWithLifecycle()
     val isMoodLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle()
-    
+
     val monthYearFormatter = remember(Locale.getDefault()) {
         DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault())
     }
-    
+
     MoodDistributionChartCard(
         title = "Mood Distribution for ${monthYearFormatter.format(currentYearMonth)}",
         moodDistribution = moodSummary?.distribution,
         isLoading = isMoodLoading
     )
-    
+
     MoodLineChartCard(viewModel = viewModel)
 }
 
@@ -156,19 +158,19 @@ private fun YearlyStatistics(viewModel: StatisticsViewModel) {
     val selectedHabitIdForPixels by viewModel.selectedHabitIdForPixels.collectAsStateWithLifecycle()
     val habitPixelData by viewModel.habitPixelData.collectAsStateWithLifecycle()
     val isHabitPixelLoading by viewModel.isHabitPixelLoading.collectAsStateWithLifecycle()
-    
+
     MoodDistributionChartCard(
         title = "Yearly Mood Distribution",
         moodDistribution = moodSummary?.distribution,
         isLoading = isMoodLoading
     )
-    
+
     YearInPixelsCard(
         selectedYear = currentYear,
         pixelData = yearPixelsData,
         isLoading = isYearPixelsLoading
     )
-    
+
     HabitYearInPixelsCard(
         selectedYear = currentYear,
         allHabits = allHabits,

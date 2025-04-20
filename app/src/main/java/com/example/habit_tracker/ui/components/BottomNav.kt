@@ -10,38 +10,36 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue // Import getValue
-import androidx.navigation.NavController // Import NavController
-import androidx.navigation.NavDestination.Companion.hierarchy // For hierarchy check
-import androidx.navigation.NavGraph.Companion.findStartDestination // For popUpTo logic
-import androidx.navigation.compose.currentBackStackEntryAsState // Import currentBackStackEntryAsState
-import com.example.habit_tracker.ui.navigation.AppDestinations // Import your destinations object
+import androidx.compose.runtime.getValue
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.habit_tracker.ui.navigation.AppDestinations
 
-// Define items for the navigation bar
 private val items = listOf(
     ScreenNavItem(
         "Entries",
-        AppDestinations.HOME, // Use constant
+        AppDestinations.HOME,
         Icons.Default.List
     ),
     ScreenNavItem(
         "Stats",
-        AppDestinations.STATISTICS, // Use constant
+        AppDestinations.STATISTICS,
         Icons.Default.BarChart
     ),
     ScreenNavItem(
         "Calendar",
-        AppDestinations.CALENDAR, // *** FIX: Use constant from AppDestinations ***
+        AppDestinations.CALENDAR,
         Icons.Default.CalendarToday
     ),
     ScreenNavItem(
         "More",
-        AppDestinations.MORE, // *** FIX: Use constant from AppDestinations ***
+        AppDestinations.MORE,
         Icons.Default.MoreHoriz
     )
 )
 
-// Data class to hold navigation item info
 private data class ScreenNavItem(
     val label: String,
     val route: String,
@@ -49,7 +47,7 @@ private data class ScreenNavItem(
 )
 
 @Composable
-fun BottomNavigationBar(navController: NavController) { // Accept NavController
+fun BottomNavigationBar(navController: NavController) {
     NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
@@ -58,23 +56,14 @@ fun BottomNavigationBar(navController: NavController) { // Accept NavController
             NavigationBarItem(
                 icon = { Icon(screen.icon, contentDescription = screen.label) },
                 label = { Text(screen.label) },
-                // Determine if item is selected by comparing current route hierarchy
                 selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                 onClick = {
-                    // Navigate only if the selected destination is different
                     if (currentDestination?.route != screen.route) {
-                        // Use the correct route from the 'screen' object (which now uses AppDestinations)
                         navController.navigate(screen.route) {
-                            // Pop up to the start destination of the graph to
-                            // avoid building up a large stack of destinations
-                            // on the back stack as users select items
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
                             }
-                            // Avoid multiple copies of the same destination when
-                            // reselecting the same item
                             launchSingleTop = true
-                            // Restore state when reselecting a previously selected item
                             restoreState = true
                         }
                     }

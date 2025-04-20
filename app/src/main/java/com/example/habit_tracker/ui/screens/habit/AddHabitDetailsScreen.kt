@@ -39,9 +39,9 @@ fun AddHabitDetailsScreen(
 ) {
     var habitName by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(HabitType.BINARY) }
-    
+
     val isFormValid = habitName.isNotBlank()
-    
+
     Scaffold(
         topBar = {
             HabitDetailsTopBar(
@@ -132,7 +132,7 @@ private fun HabitTypeSelector(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        
+
         val types = HabitType.values()
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             types.forEachIndexed { index, habitType ->
@@ -174,8 +174,7 @@ private fun NextButton(
 ) {
     FloatingActionButton(
         onClick = onClick,
-        modifier = modifier,
-        enabled = enabled
+        modifier = modifier
     ) {
         Icon(
             Icons.AutoMirrored.Filled.ArrowForward,
