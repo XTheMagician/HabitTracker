@@ -18,14 +18,12 @@ import com.example.habit_tracker.ui.components.BottomNavigationBar
 @Composable
 fun PlaceholderScreen(
     navController: NavController,
-    screenName: String // Pass the name to display
+    screenName: String
 ) {
     Scaffold(
-        // Optional: Add a simple TopAppBar if you want a title
         topBar = {
             TopAppBar(title = { Text(screenName) })
         },
-        // IMPORTANT: Include the BottomNavBar so users can navigate away
         bottomBar = { BottomNavigationBar(navController) }
     ) { innerPadding ->
         Box(

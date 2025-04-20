@@ -30,43 +30,33 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 
 @Composable
-fun MoodLineChartCard( // Renamed the function
+fun MoodLineChartCard( 
     viewModel: StatisticsViewModel
 ) {
     val chartData by viewModel.moodChartData.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle() // <-- NEW NAME
+    val isLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle() 
     val showChart by viewModel.showMoodChart.collectAsStateWithLifecycle()
 
-    // Create the model producer (SAME AS MoodChartCard)
     val modelProducer = remember { CartesianChartModelProducer() }
 
-    // Update the chart whenever the data changes.
     LaunchedEffect(chartData) {
-        // Use runTransaction (SAME AS MoodChartCard)
         modelProducer.runTransaction {
             if (chartData.isNotEmpty()) {
-                // --- CHANGE: Use lineSeries like the example ---
-                // The example `series(13, 8, ...)` passes only Y-values.
-                // We do the same by mapping our chartData pairs to their second element (mood value).
                 lineSeries {
                     series(chartData.map { it.second })
                 }
-                // --- End CHANGE ---
             } else {
-                // Use clear() from the transaction scope (SAME AS MoodChartCard)
-                clear() // Correct way to call clear within the scope
+                clear()
             }
         }
     }
 
-    // Display the chart inside a Card (SAME STRUCTURE AS MoodChartCard).
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Slightly different title for clarity
             Text("Mood Trend", style = MaterialTheme.typography.titleMedium)
             Box(
                 modifier = Modifier
@@ -81,22 +71,16 @@ fun MoodLineChartCard( // Renamed the function
 
                     showChart -> {
                         CartesianChartHost(
-                            // --- CHANGE: Adapt the rememberCartesianChart call ---
                             chart = rememberCartesianChart(
-                                // 1. Use the LINE layer
                                 layers = arrayOf(rememberLineCartesianLayer()),
-                                // 2. Use the same axis configuration as your working example
                                 startAxis = VerticalAxis.rememberStart(),
                                 bottomAxis = HorizontalAxis.rememberBottom()
                             ),
-                            // --- End CHANGE ---
                             modelProducer = modelProducer,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-
                     else -> {
-                        // Slightly different text
                         Text("Not enough mood data for trend line (need >= 2 points).")
                     }
                 }

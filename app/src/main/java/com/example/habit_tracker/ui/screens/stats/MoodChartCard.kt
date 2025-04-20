@@ -34,17 +34,14 @@ fun MoodChartCard(
     viewModel: StatisticsViewModel
 ) {
     val chartData by viewModel.moodChartData.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle() // <-- NEW NAME
+    val isLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle()
     val showChart by viewModel.showMoodChart.collectAsStateWithLifecycle()
 
-    // Create the model producer.
     val modelProducer = remember { CartesianChartModelProducer() }
 
-    // Update the chart whenever the data changes.
     LaunchedEffect(chartData) {
         modelProducer.runTransaction {
             if (chartData.isNotEmpty()) {
-                // Map the mood values (Y-values) and pass them as a Collection<Number>.
                 columnSeries {
                     series(chartData.map { it.second })
                 }
@@ -54,7 +51,6 @@ fun MoodChartCard(
         }
     }
 
-    // Display the chart inside a Card.
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -75,7 +71,6 @@ fun MoodChartCard(
 
                     showChart -> {
                         CartesianChartHost(
-                            // Use the updated parameter "layers" with a list of a column layer.
                             chart = rememberCartesianChart(
                                 layers = arrayOf(rememberColumnCartesianLayer()),
                                 startAxis = VerticalAxis.rememberStart(),
